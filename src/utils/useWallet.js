@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import Paragraph from "antd/lib/typography/Paragraph";
+import _ from "lodash";
 import { notification } from "antd";
 import Big from "big.js";
 import { getWallet, createWallet } from "./createWallet";
+import useInterval from "./useInterval";
 import usePrevious from "./usePrevious";
 import withSLP from "./withSLP";
 import getSlpBanlancesAndUtxos from "./getSlpBanlancesAndUtxos";
@@ -29,28 +31,47 @@ const normalizeBalance = (SLP, slpBalancesAndUtxos) => {
   };
 };
 
-const update = withSLP(async (SLP, { wallet, setBalances, setTokens, setSlpBalancesAndUtxos }) => {
-  try {
-    if (!wallet) {
-      return;
-    }
-    const slpBalancesAndUtxos = await getSlpBanlancesAndUtxos(wallet.cashAddresses);
-    const { tokens } = slpBalancesAndUtxos;
+const update = withSLP(
+  async (
+    SLP,
+    { wallet, setBalances, setTokens, setSlpBalancesAndUtxos, previousSlpBalancesAndUtxos }
+  ) => {
+    try {
+      if (!wallet) {
+        return;
+      }
+      const slpBalancesAndUtxos = await getSlpBanlancesAndUtxos(wallet.cashAddresses);
 
-    setSlpBalancesAndUtxos(normalizeSlpBalancesAndUtxos(SLP, slpBalancesAndUtxos, wallet));
-    setBalances(normalizeBalance(SLP, slpBalancesAndUtxos));
-    setTokens(tokens);
-  } catch (error) {}
-});
+      const { tokens } = slpBalancesAndUtxos;
+
+      setSlpBalancesAndUtxos(prev =>
+        !_.isEqual(prev, normalizeSlpBalancesAndUtxos(SLP, slpBalancesAndUtxos, wallet))
+          ? normalizeSlpBalancesAndUtxos(SLP, slpBalancesAndUtxos, wallet)
+          : prev
+      );
+      setBalances(prev =>
+        !_.isEqual(prev, normalizeBalance(SLP, slpBalancesAndUtxos))
+          ? normalizeBalance(SLP, slpBalancesAndUtxos)
+          : prev
+      );
+      setTokens(prev => (!_.isEqual(prev, tokens) ? tokens : prev));
+
+      return;
+    } catch (error) {}
+  }
+);
 
 export const useWallet = () => {
   const [wallet, setWallet] = useState(getWallet());
   const [balances, setBalances] = useState({});
   const [tokens, setTokens] = useState([]);
   const [slpBalancesAndUtxos, setSlpBalancesAndUtxos] = useState([]);
+  const [slpBalancesAndUtxosResp, setSlpBalancesAndUtxosResp] = useState({});
   const [loading, setLoading] = useState(true);
 
   const previousBalances = usePrevious(balances);
+
+  const previousSlpBalancesAndUtxosResp = usePrevious(slpBalancesAndUtxosResp);
 
   if (
     previousBalances &&
@@ -71,21 +92,19 @@ export const useWallet = () => {
     });
   }
 
-  useEffect(() => {
-    const updateRoutine = () => {
-      update({
-        wallet: getWallet(),
-        setBalances,
-        setTokens,
-        setSlpBalancesAndUtxos
-      }).finally(() => {
-        setLoading(false);
-        setTimeout(updateRoutine, 5000);
-      });
-    };
-
-    updateRoutine();
-  }, []);
+  useInterval(() => {
+    console.log("update");
+    update({
+      wallet: getWallet(),
+      setBalances,
+      setTokens,
+      setSlpBalancesAndUtxos,
+      setSlpBalancesAndUtxosResp,
+      previousSlpBalancesAndUtxosResp
+    }).finally(() => {
+      setLoading(false);
+    });
+  }, 5000);
 
   return {
     wallet,
@@ -99,7 +118,9 @@ export const useWallet = () => {
         setBalances,
         setTokens,
         setLoading,
-        setSlpBalancesAndUtxos
+        setSlpBalancesAndUtxos,
+        setSlpBalancesAndUtxosResp,
+        previousSlpBalancesAndUtxosResp
       }),
     createWallet: importMnemonic => {
       setLoading(true);
@@ -109,7 +130,9 @@ export const useWallet = () => {
         wallet: newWallet,
         setBalances,
         setTokens,
-        setSlpBalancesAndUtxos
+        setSlpBalancesAndUtxos,
+        setSlpBalancesAndUtxosResp,
+        previousSlpBalancesAndUtxosResp
       }).finally(() => setLoading(false));
     }
   };
