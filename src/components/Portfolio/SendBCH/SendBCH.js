@@ -10,6 +10,7 @@ import { sendBch, calcFee } from "../../../utils/sendBch";
 import { FormItemWithMaxAddon, FormItemWithQRCodeAddon } from "../EnhancedInputs";
 import getTransactionHistory from "../../../utils/getTransactionHistory";
 import withSLP, { getRestUrl } from "../../../utils/withSLP";
+import { DUST } from "../../../utils/sendDividends";
 
 export const StyledButtonWrapper = styled.div`
   display: flex;
@@ -38,7 +39,7 @@ const SendBCH = ({ onClose, outerAction }) => {
       dirty: false
     });
 
-    if (!formData.address || !formData.value || Number(formData.value) <= 0) {
+    if (!formData.address || !formData.value || Number(formData.value) < DUST) {
       return;
     }
 
@@ -227,11 +228,13 @@ const SendBCH = ({ onClose, outerAction }) => {
                       />
                       <FormItemWithMaxAddon
                         validateStatus={
-                          !formData.dirty && Number(formData.value) <= 0 ? "error" : ""
+                          !formData.dirty && Number(formData.value) < DUST ? "error" : ""
                         }
                         help={
-                          !formData.dirty && Number(formData.value) <= 0
-                            ? "Should be greater than 0"
+                          !formData.dirty && Number(formData.value) < DUST
+                            ? `Insufficient BCH, must have at least ${DUST} BCH
+                            not associated with SLP utxos to send BCH.
+                            Please deposit additional BCH.`
                             : ""
                         }
                         onMax={onMax}

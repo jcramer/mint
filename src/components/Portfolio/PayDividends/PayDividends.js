@@ -104,8 +104,7 @@ const PayDividends = (SLP, { token, onClose, bordered = false }) => {
 
   const submitEnabled =
     /^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) &&
-    formData.amount > DUST &&
-    (!stats.maxAmount || formData.amount <= stats.maxAmount) &&
+    formData.amount >= DUST &&
     (!advancedOptions ||
       !advancedOptions.opReturnMessage ||
       advancedOptions.opReturnMessage.length <= 60) &&
@@ -460,12 +459,11 @@ const PayDividends = (SLP, { token, onClose, bordered = false }) => {
                             !submitEnabled &&
                             /^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) &&
                             tokenInfo &&
-                            !loading
-                              ? `Must be greater than ${DUST} BCH ${
-                                  stats.maxAmount > 0
-                                    ? `and lower or equal to ${stats.maxAmount}`
-                                    : ""
-                                }`
+                            !loading &&
+                            Number(formData.amount) < DUST
+                              ? `Insufficient BCH, must have at least ${DUST} BCH
+                              not associated with SLP utxos to send BCH.
+                              Please deposit additional BCH.`
                               : ""
                           }
                           onMax={onMaxAmount}

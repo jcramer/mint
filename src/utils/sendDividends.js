@@ -2,7 +2,7 @@ import Big from "big.js";
 import withSLP from "./withSLP";
 import { sendBch, SATOSHIS_PER_BYTE } from "./sendBch";
 
-export const DUST = 0.00005;
+export const DUST = 0.00001;
 
 export const getEncodedOpReturnMessage = withSLP((SLP, opReturnMessage = "", tokenId) => {
   const fullOpReturnMessage = `${tokenId} MintDividend${
