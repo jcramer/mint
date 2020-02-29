@@ -1,9 +1,7 @@
 import Big from "big.js";
-import withSLP from "./withSLP";
-import { SATOSHIS_PER_BYTE } from "./sendBch";
-import Dividends from "./dividends/dividends";
-
-export const DUST = 0.00005;
+import withSLP from "../withSLP";
+import { SATOSHIS_PER_BYTE, DUST } from "../sendBch";
+import Dividends from "./dividends";
 
 export const getEncodedOpReturnMessage = withSLP((SLP, opReturnMessage = "", tokenId) => {
   const decodedOpReturn = `${tokenId} MintDividend${opReturnMessage ? `: ${opReturnMessage}` : ""}`;
@@ -98,9 +96,9 @@ export const sendDividends = async (wallet, utxos, advancedOptions, { value, tok
 
   const dividend = new Dividends({
     token,
-    recipients: addresses,
-    totalValue: value,
-    values,
+    eligibleDividendReceivers: addresses,
+    dividendQuantity: value,
+    dividendQuantities: values,
     opReturn: advancedOptions.opReturnMessage
   });
 

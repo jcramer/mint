@@ -10,8 +10,9 @@ import Dividends from "../../utils/dividends/dividends";
 import { SLP_TOKEN_ICONS_URL } from "../Portfolio/Portfolio";
 import { EnhancedCard } from "../Portfolio/EnhancedCard";
 import bchFlagLogo from "../../assets/4-bitcoin-cash-logo-flag.png";
-import { getEncodedOpReturnMessage } from "../../utils/sendDividends";
+import { getEncodedOpReturnMessage } from "../../utils/dividends/sendDividends";
 import ButtonGroup from "antd/lib/button/button-group";
+import SlpDividends from "../../utils/slpDividends/slpDividends";
 
 const StyledCol = styled(Col)`
   margin-top: 8px;
@@ -94,7 +95,9 @@ const DividendHistory = () => {
   const [selected, setSelected] = useState(null);
 
   useEffect(() => {
-    setDividends(Object.values(Dividends.getAll()).sort((a, b) => b.startDate - a.startDate));
+    const dividends = Object.values(Dividends.getAll());
+    const slpDividends = Object.values(SlpDividends.getAll());
+    setDividends([...dividends, ...slpDividends].sort((a, b) => b.startDate - a.startDate));
   }, [balances]);
 
   const isEmpty = !dividends || dividends.length === 0;
@@ -113,10 +116,15 @@ const DividendHistory = () => {
   };
 
   const updateDividendStatus = (dividend, status) => {
-    const div = dividends.find(d => d.startDate === dividend.startDate);
-    div.status = status;
+    const d = dividends.find(d => d.startDate === dividend.startDate);
+    d.status = status;
+
     setDividends([...dividends]);
-    Dividends.save(dividend);
+    if (d.token) {
+      Dividends.save(dividend);
+    } else {
+      SlpDividends.save(dividend);
+    }
   };
 
   return (
@@ -166,7 +174,7 @@ const DividendHistory = () => {
                         message={
                           <>
                             <Icon type="stop" />
-                            Crashed {dividend.error ? `Cause: ${dividend.error}` : ""}
+                            Crashed. {dividend.error ? `Cause: ${dividend.error}` : ""}
                           </>
                         }
                         type="error"
@@ -199,12 +207,14 @@ const DividendHistory = () => {
                     ) : null}
                     <StyledDescriptions bordered column={1}>
                       <Descriptions.Item label="Addresses">
-                        {dividend.totalRecipients}
+                        {dividend.receiverCount}
                       </Descriptions.Item>
                       <Descriptions.Item label="OP Return Messasge">
                         {
-                          getEncodedOpReturnMessage(dividend.opReturn, dividend.token.tokenId)
-                            .decodedOpReturn
+                          getEncodedOpReturnMessage(
+                            dividend.opReturn,
+                            dividend.token ? dividend.token.tokenId : dividend.sendingToken.tokenId
+                          ).decodedOpReturn
                         }
                       </Descriptions.Item>
                       <Descriptions.Item label="Start Date">
@@ -234,7 +244,23 @@ const DividendHistory = () => {
               >
                 <StyledSummary>
                   <StyledSummaryIcons>
-                    <Img src={bchFlagLogo} width="96" height="54" />
+                    {dividend.token ? (
+                      <Img src={bchFlagLogo} width="96" height="54" />
+                    ) : (
+                      <Img
+                        src={`${SLP_TOKEN_ICONS_URL}/${dividend.sendingToken.tokenId}.png`}
+                        unloader={
+                          <img
+                            alt={`identicon of tokenId ${dividend.sendingToken.tokenId} `}
+                            heigh="60"
+                            width="60"
+                            style={{ borderRadius: "50%" }}
+                            key={`identicon-${dividend.sendingToken.tokenId}`}
+                            src={makeBlockie(dividend.sendingToken.tokenId)}
+                          />
+                        }
+                      />
+                    )}
                     <StyledProgressAndIcon>
                       <StyledProgress
                         strokeColor={getProgressColor(dividend)}
@@ -246,23 +272,37 @@ const DividendHistory = () => {
                       <StyledSummaryIconArrow type="arrow-right" />
                     </StyledProgressAndIcon>
                     <Img
-                      src={`${SLP_TOKEN_ICONS_URL}/${dividend.token.tokenId}.png`}
+                      src={`${SLP_TOKEN_ICONS_URL}/${
+                        dividend.token ? dividend.token.tokenId : dividend.receiverToken.tokenId
+                      }.png`}
                       unloader={
                         <img
-                          alt={`identicon of tokenId ${dividend.token.tokenId} `}
+                          alt={`identicon of tokenId ${
+                            dividend.token ? dividend.token.tokenId : dividend.receiverToken.tokenId
+                          } `}
                           heigh="60"
                           width="60"
                           style={{ borderRadius: "50%" }}
-                          key={`identicon-${dividend.token.tokenId}`}
-                          src={makeBlockie(dividend.token.tokenId)}
+                          key={`identicon-${
+                            dividend.token ? dividend.token.tokenId : dividend.receiverToken.tokenId
+                          }`}
+                          src={makeBlockie(
+                            dividend.token ? dividend.token.tokenId : dividend.receiverToken.tokenId
+                          )}
                         />
                       }
                     />
                   </StyledSummaryIcons>
                   <StyledDescriptions column={1}>
-                    <Descriptions.Item label="BCH Amount">{dividend.totalValue}</Descriptions.Item>
-                    <Descriptions.Item label="Token">
-                      {dividend.token.info.symbol}
+                    <Descriptions.Item label={dividend.token ? "BCH Amount" : "Sending Token"}>
+                      {dividend.token
+                        ? dividend.dividendQuantity
+                        : dividend.sendingToken.info.symbol}
+                    </Descriptions.Item>
+                    <Descriptions.Item label={dividend.token ? "Token" : "Receiving Token"}>
+                      {dividend.token
+                        ? dividend.token.info.symbol
+                        : dividend.receiverToken.info.symbol}
                     </Descriptions.Item>
                   </StyledDescriptions>
                 </StyledSummary>

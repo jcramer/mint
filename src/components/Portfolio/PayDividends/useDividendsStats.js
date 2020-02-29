@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { message } from "antd";
-import { getBalancesForToken, getEligibleAddresses } from "../../../utils/sendDividends";
+import { getBalancesForToken, getEligibleAddresses } from "../../../utils/dividends/sendDividends";
 import retry from "../../../utils/retry";
 import { WalletContext } from "../../../utils/context";
 

@@ -9,7 +9,8 @@ import useAsyncTimeout from "./useAsyncTimeout";
 import usePrevious from "./usePrevious";
 import withSLP from "./withSLP";
 import getSlpBanlancesAndUtxos from "./getSlpBanlancesAndUtxos";
-import DividendsManager from "./dividends/dividends-manager";
+import DividendsManager from "./dividends/dividendsManager";
+import SlpDividendsManager from "./slpDividends/slpDividendsManager";
 
 const normalizeSlpBalancesAndUtxos = (SLP, slpBalancesAndUtxos, wallet) => {
   slpBalancesAndUtxos.nonSlpUtxos.forEach(utxo => {
@@ -57,7 +58,7 @@ export const useWallet = () => {
   const [walletState, setWalletState] = useState({
     balances: {},
     tokens: [],
-    slpBalancesAndUtxos: []
+    slpBalancesAndUtxos: {}
   });
   const [loading, setLoading] = useState(true);
   const { balances, tokens, slpBalancesAndUtxos } = walletState;
@@ -83,7 +84,15 @@ export const useWallet = () => {
   }
 
   const updateDividends = useCallback(
-    ({ wallet }) => DividendsManager.update({ wallet, utxos: slpBalancesAndUtxos.nonSlpUtxos }),
+    async ({ wallet }) => {
+      await DividendsManager.update({ wallet, utxos: slpBalancesAndUtxos.nonSlpUtxos });
+      if (slpBalancesAndUtxos.slpUtxos) {
+        await SlpDividendsManager.update({
+          wallet,
+          utxos: [...slpBalancesAndUtxos.nonSlpUtxos, ...slpBalancesAndUtxos.slpUtxos]
+        });
+      }
+    },
     [slpBalancesAndUtxos]
   );
 

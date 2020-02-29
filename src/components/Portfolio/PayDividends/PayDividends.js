@@ -3,7 +3,7 @@ import styled from "styled-components";
 import Img from "react-image";
 import makeBlockie from "ethereum-blockies-base64";
 import { WalletContext } from "../../../utils/context";
-import { sendDividends, DUST } from "../../../utils/sendDividends";
+import { sendDividends } from "../../../utils/dividends/sendDividends";
 import {
   Card,
   Icon,
@@ -15,16 +15,19 @@ import {
   Tooltip,
   message,
   Alert,
-  Input
+  Switch,
+  Select
 } from "antd";
 import { Row, Col } from "antd";
 import Paragraph from "antd/lib/typography/Paragraph";
-import { FormItemWithMaxAddon } from "../EnhancedInputs";
+import { FormItemWithMaxAddon, FormItemWithTokenSearchAddon } from "../EnhancedInputs";
 import { AdvancedOptions } from "./AdvancedOptions";
 import { QRCode } from "../../Common/QRCode";
 import withSLP, { getRestUrl } from "../../../utils/withSLP";
 import { useDividendsStats } from "./useDividendsStats";
 import { useHistory } from "react-router";
+import { DUST } from "../../../utils/sendBch";
+import { sendSlpDividends } from "../../../utils/slpDividends/sendSlpDividends";
 
 const StyledPayDividends = styled.div`
   * {
@@ -75,43 +78,62 @@ export const StyledButtonWrapper = styled.div`
   justify-content: center;
 `;
 
+export const StyledSwitchWrapper = styled.div`
+  display: flex;
+
+  * {
+    background-color: rgb(223, 223, 223) !important;
+  }
+`;
+
 const SLP_TOKEN_ICONS_URL = "https://tokens.bch.sx/64";
 
-const PayDividends = (SLP, { token, onClose, bordered = false }) => {
-  const { wallet, balances, slpBalancesAndUtxos } = React.useContext(WalletContext);
+export const Types = {
+  BCH: 0,
+  SLP: 1
+};
+
+const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) => {
+  const { wallet, balances, slpBalancesAndUtxos, tokens } = React.useContext(WalletContext);
   const [formData, setFormData] = useState({
     dirty: false,
     amount: "",
-    tokenId: token ? token.tokenId : null,
+    tokenId: initialToken ? initialToken.tokenId : null,
     maxAmount: 0,
-    maxAmountChecked: false
+    maxAmountChecked: false,
+    slpDividendQuantity: ""
   });
   const [advancedOptions, setAdvancedOptions] = useState({
     ignoreOwnAddress: true,
     addressesToExclude: [{ address: "", valid: null }]
   });
+  const [type, setType] = useState(Types.BCH);
   const [loading, setLoading] = useState(false);
-  const [tokenInfo, setTokenInfo] = useState(token);
-  const [tokenNotFound, setTokenNotFound] = useState(false);
-  const [lastSearchedTokenId, setLastSearchedTokenId] = useState("");
+  const [token, setToken] = useState(initialToken);
+  const [sendingToken, setSendingToken] = useState();
   const history = useHistory();
 
   const { stats } = useDividendsStats({
-    token: tokenInfo,
+    token,
     amount: formData.amount,
+    type,
     setLoading,
     advancedOptions,
-    disabled: !/^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) || !tokenInfo
+    disabled: !/^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) || !token
   });
 
+  const validSlpDividend = sendingToken && formData.slpDividendQuantity >= 0;
+  const validBchDividend =
+    formData.amount > DUST && (!stats.maxAmount || formData.amount <= stats.maxAmount);
   const submitEnabled =
     /^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) &&
-    formData.amount > DUST &&
-    (!stats.maxAmount || formData.amount <= stats.maxAmount) &&
+    ((type === Types.SLP && validSlpDividend) || (type === Types.BCH && validBchDividend)) &&
     (!advancedOptions ||
       !advancedOptions.opReturnMessage ||
       advancedOptions.opReturnMessage.length <= 60) &&
-    tokenInfo;
+    token;
+
+  const tokensAvaibleForAirdrop = tokens ? tokens.filter(t => t.balance > 0) : [];
 
   if (formData.maxAmountChecked && stats.maxAmount !== formData.amount) {
     setFormData({
@@ -133,10 +155,23 @@ const PayDividends = (SLP, { token, onClose, bordered = false }) => {
     setLoading(true);
     const { amount } = formData;
     try {
-      await sendDividends(wallet, slpBalancesAndUtxos.nonSlpUtxos, advancedOptions, {
-        value: amount,
-        token: token || { tokenId: tokenInfo.tokenId, info: tokenInfo }
-      });
+      if (type === Types.BCH) {
+        await sendDividends(wallet, slpBalancesAndUtxos.nonSlpUtxos, advancedOptions, {
+          value: amount,
+          token: token
+        });
+      } else {
+        await sendSlpDividends(
+          wallet,
+          [...slpBalancesAndUtxos.nonSlpUtxos, ...slpBalancesAndUtxos.slpUtxos],
+          advancedOptions,
+          {
+            slpDividendQuantity: formData.slpDividendQuantity,
+            receiverToken: token,
+            sendingToken
+          }
+        );
+      }
 
       notification.success({
         message: "Success",
@@ -189,31 +224,18 @@ const PayDividends = (SLP, { token, onClose, bordered = false }) => {
     setFormData(data => ({ ...data, dirty: true, maxAmountChecked: false, [name]: value }));
   };
 
-  const search = async () => {
-    const tokenId = formData.tokenId;
-    if (/^[A-Fa-f0-9]{64}$/g.test(tokenId)) {
-      setLoading(true);
-      try {
-        const tokenDetails = await SLP.Utils.list(tokenId);
-        if (tokenDetails.id !== "not found") {
-          setTokenInfo({ ...tokenDetails, tokenId: tokenId, isFromInput: true });
-          setTokenNotFound(false);
-          setFormData(data => ({
-            ...data,
-            dirty: false
-          }));
-        } else {
-          setTokenNotFound(true);
-          setTokenInfo(undefined);
-          setLastSearchedTokenId(tokenId);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-      setLoading(false);
-    } else {
-      setLastSearchedTokenId(tokenId ? tokenId : " ");
-    }
+  const onTokenFound = tokenDetails => {
+    setToken({
+      tokenId: tokenDetails.id,
+      name: tokenDetails.name,
+      info: tokenDetails,
+      isFromInput: true
+    });
+    setFormData(data => ({
+      ...data,
+      tokenId: tokenDetails.id,
+      dirty: false
+    }));
   };
 
   const onMaxAmount = async () => {
@@ -240,7 +262,9 @@ const PayDividends = (SLP, { token, onClose, bordered = false }) => {
     setAdvancedOptions(options);
   };
 
-  const tokenIdRef = React.useRef(null);
+  const onMaxSendingToken = () => {
+    setFormData({ ...formData, slpDividendQuantity: sendingToken.balance, dirty: true });
+  };
 
   return (
     <StyledPayDividends>
@@ -275,23 +299,23 @@ const PayDividends = (SLP, { token, onClose, bordered = false }) => {
                 <>
                   <br />
                   <Row type="flex" style={{ justifyContent: "center" }}>
-                    {tokenInfo && tokenInfo.name && tokenInfo.tokenId && tokenInfo.isFromInput && (
+                    {token && token.name && token.tokenId && token.isFromInput && (
                       <Col>
                         <div style={{ marginRight: "10px" }}>
                           <Img
-                            src={`${SLP_TOKEN_ICONS_URL}/${tokenInfo.tokenId}.png`}
+                            src={`${SLP_TOKEN_ICONS_URL}/${token.tokenId}.png`}
                             unloader={
                               <img
-                                alt={`identicon of tokenId ${tokenInfo.tokenId} `}
+                                alt={`identicon of tokenId ${token.tokenId} `}
                                 height="60"
                                 width="60"
                                 style={{ borderRadius: "50%" }}
-                                key={`identicon-${tokenInfo.tokenId}`}
-                                src={makeBlockie(tokenInfo.tokenId)}
+                                key={`identicon-${token.tokenId}`}
+                                src={makeBlockie(token.tokenId)}
                               />
                             }
                           />
-                          <p>{tokenInfo.name}</p>
+                          <p>{token.name}</p>
                         </div>
                       </Col>
                     )}
@@ -299,7 +323,7 @@ const PayDividends = (SLP, { token, onClose, bordered = false }) => {
                   <Row
                     type="flex"
                     style={{
-                      justifyContent: !tokenInfo || tokenInfo.isFromInput ? "center" : "inherit"
+                      justifyContent: !token || token.isFromInput ? "center" : "inherit"
                     }}
                   >
                     <Col>
@@ -353,123 +377,102 @@ const PayDividends = (SLP, { token, onClose, bordered = false }) => {
                     <Col span={24}>
                       <Form style={{ width: "auto", marginBottom: "1em" }} noValidate>
                         {!token && (
+                          <FormItemWithTokenSearchAddon
+                            onResult={onTokenFound}
+                            onLoading={setLoading}
+                            onClear={() => {
+                              setToken(undefined);
+                              setFormData(data => ({
+                                ...data,
+                                dirty: false,
+                                maxAmountChecked: false,
+                                tokenId: null,
+                                maxAmount: 0,
+                                amount: ""
+                              }));
+                              setAdvancedOptions({
+                                ignoreOwnAddress: true,
+                                addressesToExclude: [{ address: "", valid: null }]
+                              });
+                            }}
+                            inputProps={{}}
+                            required
+                          />
+                        )}
+                        {type === Types.BCH ? (
+                          <FormItemWithMaxAddon
+                            style={{ margin: 0 }}
+                            disabled={!/^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) || !token}
+                            validateStatus={
+                              formData.dirty &&
+                              !submitEnabled &&
+                              /^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) &&
+                              token &&
+                              !loading
+                                ? "error"
+                                : ""
+                            }
+                            help={
+                              formData.dirty &&
+                              !submitEnabled &&
+                              /^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) &&
+                              token &&
+                              !loading
+                                ? `Must be greater than ${DUST} BCH ${
+                                    stats.maxAmount > 0
+                                      ? `and lower or equal to ${stats.maxAmount}`
+                                      : ""
+                                  }`
+                                : ""
+                            }
+                            onMax={onMaxAmount}
+                            inputProps={{
+                              suffix: "BCH",
+                              name: "amount",
+                              placeholder: "Amount",
+                              onChange: e => handleChange(e),
+                              required: true,
+                              value: formData.amount,
+                              disabled: !/^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) || !token
+                            }}
+                          />
+                        ) : (
                           <>
-                            <Form.Item
-                              validateStatus={
-                                formData.dirty &&
-                                (!tokenInfo && lastSearchedTokenId) &&
-                                (!/^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) ||
-                                  (tokenNotFound &&
-                                    lastSearchedTokenId === formData.tokenId &&
-                                    /^[A-Fa-f0-9]{64}$/g.test(formData.tokenId))) &&
-                                !loading
-                                  ? "error"
-                                  : ""
+                            <Select
+                              placeholder="Select the sending token"
+                              onChange={value =>
+                                setSendingToken(tokens.find(t => t.tokenId === value))
                               }
-                              help={
-                                formData.dirty &&
-                                (!tokenInfo && lastSearchedTokenId) &&
-                                (!/^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) ||
-                                  (tokenNotFound &&
-                                    lastSearchedTokenId === formData.tokenId &&
-                                    /^[A-Fa-f0-9]{64}$/g.test(formData.tokenId))) &&
-                                !loading
-                                  ? tokenNotFound &&
-                                    lastSearchedTokenId === formData.tokenId &&
-                                    /^[A-Fa-f0-9]{64}$/g.test(formData.tokenId)
-                                    ? "Token not found. Try a different Token ID."
-                                    : "Invalid Token ID"
-                                  : /^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) && !tokenInfo
-                                  ? "Click on search"
-                                  : ""
-                              }
-                              required
                             >
-                              <Input
-                                prefix={<Icon type="block" />}
-                                placeholder="Token ID"
-                                name="tokenId"
-                                onChange={e => handleChange(e)}
-                                disabled={!tokenNotFound && tokenInfo}
-                                ref={tokenIdRef}
-                                required
-                                autoComplete="off"
-                                type="text"
-                                addonAfter={
-                                  !tokenNotFound && tokenInfo ? (
-                                    <Button
-                                      ghost
-                                      type="link"
-                                      icon="edit"
-                                      onClick={e => {
-                                        setTokenNotFound(false);
-                                        setTokenInfo(undefined);
-
-                                        tokenIdRef.current.handleReset(e);
-                                        setFormData(data => ({
-                                          ...data,
-                                          dirty: false,
-                                          maxAmountChecked: false,
-                                          tokenId: null,
-                                          maxAmount: 0,
-                                          amount: ""
-                                        }));
-                                        setLastSearchedTokenId("");
-                                        setAdvancedOptions({
-                                          ignoreOwnAddress: true,
-                                          addressesToExclude: [{ address: "", valid: null }]
-                                        });
-                                      }}
-                                    />
-                                  ) : (
-                                    <Button
-                                      ghost
-                                      type="link"
-                                      icon="search"
-                                      onClick={() => search()}
-                                    />
-                                  )
-                                }
+                              {tokensAvaibleForAirdrop.map(t => (
+                                <Select.Option value={t.tokenId}>{t.info.name}</Select.Option>
+                              ))}
+                            </Select>
+                            {sendingToken && (
+                              <FormItemWithMaxAddon
+                                onMax={onMaxSendingToken}
+                                inputProps={{
+                                  prefix: "",
+                                  name: "slpDividendQuantity",
+                                  placeholder: "Amount",
+                                  onChange: e => handleChange(e),
+                                  required: true,
+                                  value: formData.slpDividendQuantity
+                                }}
                               />
-                            </Form.Item>
+                            )}
                           </>
                         )}
-                        <FormItemWithMaxAddon
-                          style={{ margin: 0 }}
-                          disabled={!/^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) || !tokenInfo}
-                          validateStatus={
-                            formData.dirty &&
-                            !submitEnabled &&
-                            /^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) &&
-                            tokenInfo &&
-                            !loading
-                              ? "error"
-                              : ""
-                          }
-                          help={
-                            formData.dirty &&
-                            !submitEnabled &&
-                            /^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) &&
-                            tokenInfo &&
-                            !loading
-                              ? `Must be greater than ${DUST} BCH ${
-                                  stats.maxAmount > 0
-                                    ? `and lower or equal to ${stats.maxAmount}`
-                                    : ""
-                                }`
-                              : ""
-                          }
-                          onMax={onMaxAmount}
-                          inputProps={{
-                            suffix: "BCH",
-                            name: "amount",
-                            placeholder: "Amount",
-                            onChange: e => handleChange(e),
-                            required: true,
-                            value: formData.amount,
-                            disabled: !/^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) || !tokenInfo
-                          }}
-                        />
+                        <StyledSwitchWrapper>
+                          <Switch
+                            checkedChildren="BCH"
+                            unCheckedChildren="SLP"
+                            defaultChecked
+                            onChange={checked => {
+                              setType(checked ? Types.BCH : Types.SLP);
+                            }}
+                          />
+                        </StyledSwitchWrapper>
                       </Form>
                     </Col>
                     <Col span={24}>
@@ -491,7 +494,7 @@ const PayDividends = (SLP, { token, onClose, bordered = false }) => {
                       <AdvancedOptions
                         advancedOptions={advancedOptions}
                         setAdvancedOptions={setAdvancedOptionsAndCalcEligibles}
-                        disabled={!/^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) || !tokenInfo}
+                        disabled={!/^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) || !token}
                       />
                     </Col>
                     <Col span={24}>

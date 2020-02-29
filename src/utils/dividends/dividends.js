@@ -8,18 +8,24 @@ export default class Dividends {
     CRASHED: 3
   };
 
-  constructor({ token, recipients, totalValue, values, opReturn }) {
+  constructor({
+    token,
+    dividendQuantity,
+    eligibleDividendReceivers,
+    dividendQuantities,
+    opReturn
+  }) {
     this.progress = 0;
     this.status = Dividends.Status.IN_PROGRESS;
     this.token = token;
     this.startDate = Date.now();
     this.endDate = null;
     this.txs = [];
-    this.totalRecipients = recipients.length;
-    this.remainingRecipients = recipients;
-    this.remainingValues = values;
+    this.receiverCount = eligibleDividendReceivers.length;
+    this.remainingReceivers = eligibleDividendReceivers;
+    this.remainingQuantities = dividendQuantities;
     this.opReturn = opReturn;
-    this.totalValue = totalValue;
+    this.dividendQuantity = dividendQuantity;
     this.error = "";
   }
 
@@ -42,7 +48,7 @@ export default class Dividends {
         })
       );
     } catch (error) {
-      console.log("Unable to save setDividends due to: ", error.message);
+      console.log("Unable to save dividend due to: ", error.message);
     }
   };
 }
