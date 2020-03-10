@@ -96,9 +96,9 @@ export const useWallet = () => {
     [slpBalancesAndUtxos]
   );
 
-  useAsyncTimeout(() => {
+  useAsyncTimeout(async () => {
     const wallet = getWallet();
-    update({
+    await update({
       wallet,
       setWalletState
     }).finally(() => {

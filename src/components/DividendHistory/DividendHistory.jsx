@@ -206,17 +206,21 @@ const DividendHistory = () => {
                       </ButtonGroup>
                     ) : null}
                     <StyledDescriptions bordered column={1}>
-                      <Descriptions.Item label="Addresses">
+                      <Descriptions.Item label="Receivers">
                         {dividend.receiverCount}
                       </Descriptions.Item>
-                      <Descriptions.Item label="OP Return Messasge">
-                        {
-                          getEncodedOpReturnMessage(
-                            dividend.opReturn,
-                            dividend.token ? dividend.token.tokenId : dividend.sendingToken.tokenId
-                          ).decodedOpReturn
-                        }
-                      </Descriptions.Item>
+                      {dividend.token ? (
+                        <Descriptions.Item label="OP Return Messasge">
+                          {
+                            getEncodedOpReturnMessage(
+                              dividend.opReturn,
+                              dividend.token
+                                ? dividend.token.tokenId
+                                : dividend.sendingToken.tokenId
+                            ).decodedOpReturn
+                          }
+                        </Descriptions.Item>
+                      ) : null}
                       <Descriptions.Item label="Start Date">
                         {moment(dividend.startDate).format("LL LTS")}
                       </Descriptions.Item>

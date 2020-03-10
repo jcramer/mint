@@ -122,13 +122,13 @@ export const sendBch = withSLP(
 
       return link;
     } catch (err) {
-      if (err && err.err.includes(SEND_BCH_ERRORS.INSUFFICIENT_PRIORITY)) {
+      if (err.error && err.error.includes(SEND_BCH_ERRORS.INSUFFICIENT_PRIORITY)) {
         err.code = SEND_BCH_ERRORS.INSUFFICIENT_PRIORITY;
-      } else if (err && err.err.includes(SEND_BCH_ERRORS.DOUBLE_SPENDING)) {
+      } else if (err.error && err.error.includes(SEND_BCH_ERRORS.DOUBLE_SPENDING)) {
         err.code = SEND_BCH_ERRORS.DOUBLE_SPENDING;
-      } else if (err.err === "Network Error") {
+      } else if (err.error === "Network Error") {
         err.code = SEND_BCH_ERRORS.NETWORK_ERROR;
-      } else if (err && err.err.includes(SEND_BCH_ERRORS.MAX_UNCONFIRMED_TXS)) {
+      } else if (err.error && err.error.includes(SEND_BCH_ERRORS.MAX_UNCONFIRMED_TXS)) {
         err.code = SEND_BCH_ERRORS.MAX_UNCONFIRMED_TXS;
       }
       console.log(`error: `, err);

@@ -34,6 +34,11 @@ export default class Dividends {
       ? JSON.parse(window.localStorage.getItem("dividends"))
       : {};
 
+  static get = dividend => {
+    const dividends = Dividends.getAll();
+    return dividends[dividend.startDate];
+  };
+
   static save = dividend => {
     try {
       const storedDividends = Dividends.getAll();

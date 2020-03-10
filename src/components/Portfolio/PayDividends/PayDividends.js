@@ -28,6 +28,7 @@ import { useDividendsStats } from "./useDividendsStats";
 import { useHistory } from "react-router";
 import { DUST } from "../../../utils/sendBch";
 import { sendSlpDividends } from "../../../utils/slpDividends/sendSlpDividends";
+import SlpDividends from "../../../utils/slpDividends/slpDividends";
 
 const StyledPayDividends = styled.div`
   * {
@@ -197,6 +198,8 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
         message = "Balance of sending address is zero";
       } else if (/Insufficient funds/.test(e.message)) {
         message = "Insufficient funds.";
+      } else if (e.code === SlpDividends.Errors.NO_ELIGIBLE_RECEIVERS) {
+        message = SlpDividends.ErrorMessages[SlpDividends.Errors.NO_ELIGIBLE_RECEIVERS];
       } else if (!e.error) {
         message = `Transaction failed: no response from ${getRestUrl()}.`;
       } else if (/Could not communicate with full node or other external service/.test(e.error)) {
@@ -207,11 +210,7 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
 
       notification.error({
         message: "Error",
-        description: (
-          <Paragraph>
-            Unable to schedule dividend payment. Please, try again later. Cause: {message}
-          </Paragraph>
-        ),
+        description: <Paragraph>{message}</Paragraph>,
         duration: 2
       });
       console.error(e);

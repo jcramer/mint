@@ -40,6 +40,16 @@ export default class DividendsManager {
       if (dividend.remainingQuantities.length === 0) {
         dividend.endDate = Date.now();
       }
+
+      // avoid race conditions on status property
+      const oldDividend = Dividends.get(dividend);
+      if (
+        oldDividend &&
+        dividend.status === Dividends.Status.IN_PROGRESS &&
+        dividend.status !== oldDividend.status
+      ) {
+        dividend.status = oldDividend.status;
+      }
       Dividends.save(dividend);
     } catch (error) {
       if (

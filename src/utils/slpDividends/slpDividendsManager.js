@@ -50,12 +50,22 @@ export default class SlpDividendsManager {
       if (slpDividend.remainingQuantities.length === 0) {
         slpDividend.endDate = Date.now();
       }
+
+      // avoid race conditions on status property
+      const oldSlpDividend = SlpDividends.get(slpDividend);
+      if (
+        oldSlpDividend &&
+        slpDividend.status === SlpDividends.Status.IN_PROGRESS &&
+        slpDividend.status !== oldSlpDividend.status
+      ) {
+        slpDividend.status = oldSlpDividend.status;
+      }
       SlpDividends.save(slpDividend);
     } catch (error) {
       if (
         error.error &&
-        (error.error.includes(SlpDividends.ERRORS.DOUBLE_SPENDING) ||
-          error.error.includes(SlpDividends.ERRORS.TOO_MANY_UNCONFIRMED_ANCESTORS))
+        (error.error.includes(SlpDividends.Errors.DOUBLE_SPENDING) ||
+          error.error.includes(SlpDividends.Errors.TOO_MANY_UNCONFIRMED_ANCESTORS))
       ) {
         return;
       }

@@ -120,6 +120,12 @@ export const sendSlpDividends = async (
     receiverToken
   );
 
+  if (eligibleSlpDividendReceivers.length === 0) {
+    const noEligibleReceiversError = new Error();
+    noEligibleReceiversError.code = SlpDividends.Errors.NO_ELIGIBLE_RECEIVERS;
+    throw noEligibleReceiversError;
+  }
+
   const dividend = new SlpDividends({
     sendingToken,
     receiverToken,

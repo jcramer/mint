@@ -1,5 +1,5 @@
 export default class SlpDividends {
-  static BATCH_SIZE = 18;
+  static BATCH_SIZE = 1;
 
   static Status = {
     IN_PROGRESS: 0,
@@ -8,9 +8,14 @@ export default class SlpDividends {
     CRASHED: 3
   };
 
-  static ERRORS = {
+  static Errors = {
     DOUBLE_SPENDING: "code 18",
-    TOO_MANY_UNCONFIRMED_ANCESTORS: "code 64"
+    TOO_MANY_UNCONFIRMED_ANCESTORS: "code 64",
+    NO_ELIGIBLE_RECEIVERS: "custom code 1"
+  };
+
+  static ErrorMessages = {
+    [SlpDividends.Errors.NO_ELIGIBLE_RECEIVERS]: "No eligible receivers"
   };
 
   constructor({
@@ -40,6 +45,11 @@ export default class SlpDividends {
     window.localStorage.getItem("slpDividends")
       ? JSON.parse(window.localStorage.getItem("slpDividends"))
       : {};
+
+  static get = slpDividend => {
+    const slpDividends = SlpDividends.getAll();
+    return slpDividends[slpDividend.startDate];
+  };
 
   static save = slpDividend => {
     try {
