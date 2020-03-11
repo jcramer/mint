@@ -1,5 +1,5 @@
 export default class SlpDividends {
-  static BATCH_SIZE = 1;
+  static BATCH_SIZE = 18;
 
   static Status = {
     IN_PROGRESS: 0,

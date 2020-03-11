@@ -18,6 +18,9 @@ export const getEligibleSlpDividendReceivers = withSLP(
   ) => {
     const eligibleSlpDividendReceivers = [];
     const slpDividendQuantities = [];
+    const slpDividendSatoshiQuantity = new Big(slpDividendQuantity).mul(
+      Math.pow(10, sendingToken.info.decimals)
+    );
 
     const slpAddressesToExclude = advancedOptions.addressesToExclude
       .filter(addressToExclude => addressToExclude.valid)
@@ -31,15 +34,13 @@ export const getEligibleSlpDividendReceivers = withSLP(
       .filter(balance => !slpAddressesToExclude.includes(balance.slpAddress))
       .map(eligibleBalance => ({
         ...eligibleBalance,
-        tokenBalance: new Big(eligibleBalance.tokenBalanceString).div(
-          Math.pow(10, -receiverToken.info.decimals)
+        tokenBalance: new Big(eligibleBalance.tokenBalanceString).mul(
+          Math.pow(10, receiverToken.info.decimals)
         )
       }));
 
     const tokenBalanceSum = eligibleBalances.reduce((p, c) => p.plus(c.tokenBalance), new Big(0));
-    let minimumReceiverBalance = tokenBalanceSum
-      .mul(Math.pow(10, -sendingToken.info.decimals))
-      .div(slpDividendQuantity);
+    let minimumReceiverBalance = tokenBalanceSum.div(slpDividendSatoshiQuantity);
 
     const filteredEligibleBalances = eligibleBalances.filter(eligibleBalance =>
       minimumReceiverBalance.lte(eligibleBalance.tokenBalance)
@@ -49,10 +50,13 @@ export const getEligibleSlpDividendReceivers = withSLP(
       new Big(0)
     );
 
-    filteredEligibleBalances.forEach(async eligibleBalance => {
-      const eligibleQuantity = eligibleBalance.tokenBalance
+    filteredEligibleBalances.forEach(eligibleBalance => {
+      let eligibleQuantity = eligibleBalance.tokenBalance
         .div(filteredTokenBalanceSum)
-        .mul(slpDividendQuantity);
+        .mul(slpDividendSatoshiQuantity);
+      eligibleQuantity = new Big(Math.floor(eligibleQuantity)).div(
+        Math.pow(10, sendingToken.info.decimals)
+      );
       slpDividendQuantities.push(eligibleQuantity);
       eligibleSlpDividendReceivers.push(eligibleBalance.slpAddress);
     });

@@ -27,7 +27,9 @@ export default class SlpDividendsManager {
       const fundingWif = [Path245.fundingWif, Path145.fundingWif];
       const fundingAddress = [Path245.fundingAddress, Path145.fundingAddress];
       const tokenReceiverAddress = receivers;
-      const amount = quantities.map(quantity => Number(quantity).toFixed(8));
+      const amount = quantities.map(quantity =>
+        Number(quantity).toFixed(slpDividend.sendingToken.info.decimals)
+      );
 
       const link = await SLP.TokenType1.send({
         fundingAddress,
