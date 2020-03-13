@@ -104,7 +104,7 @@ export const useWallet = () => {
     }).finally(() => {
       setLoading(false);
     });
-    updateDividends({ wallet });
+    await updateDividends({ wallet });
   }, 5000);
 
   return {

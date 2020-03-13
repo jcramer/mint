@@ -1,3 +1,4 @@
+import Big from "big.js";
 import SlpDividends from "./slpDividends";
 import withSLP from "../withSLP";
 
@@ -27,8 +28,9 @@ export default class SlpDividendsManager {
       const fundingWif = [Path245.fundingWif, Path145.fundingWif];
       const fundingAddress = [Path245.fundingAddress, Path145.fundingAddress];
       const tokenReceiverAddress = receivers;
+
       const amount = quantities.map(quantity =>
-        Number(quantity).toFixed(slpDividend.sendingToken.info.decimals)
+        new Big(quantity).toFixed(slpDividend.sendingToken.info.decimals)
       );
 
       const link = await SLP.TokenType1.send({

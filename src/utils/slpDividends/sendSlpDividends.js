@@ -16,10 +16,15 @@ export const getEligibleSlpDividendReceivers = withSLP(
     sendingToken,
     receiverToken
   ) => {
+    const SATOSHIS_PER_SENDING_TOKEN = new Big(10).pow(sendingToken.info.decimals);
+    const MINIMUM_RECEIVER_TOKEN = new Big(10).pow(receiverToken.info.decimals);
     const eligibleSlpDividendReceivers = [];
     const slpDividendQuantities = [];
-    const slpDividendSatoshiQuantity = new Big(slpDividendQuantity).mul(
-      Math.pow(10, sendingToken.info.decimals)
+    const slpDividendSatoshiQuantity = new Big(slpDividendQuantity).mul(SATOSHIS_PER_SENDING_TOKEN);
+    let remainingSatoshisQuantity = new Big(slpDividendSatoshiQuantity);
+
+    const sortedReceiverTokenBalances = receiverTokenBalances.sort((a, b) =>
+      a.tokenBalance > b.tokenBalance ? -1 : 1
     );
 
     const slpAddressesToExclude = advancedOptions.addressesToExclude
@@ -30,13 +35,11 @@ export const getEligibleSlpDividendReceivers = withSLP(
       slpAddressesToExclude.push(...wallet.slpAddresses);
     }
 
-    const eligibleBalances = receiverTokenBalances
+    const eligibleBalances = sortedReceiverTokenBalances
       .filter(balance => !slpAddressesToExclude.includes(balance.slpAddress))
       .map(eligibleBalance => ({
         ...eligibleBalance,
-        tokenBalance: new Big(eligibleBalance.tokenBalanceString).mul(
-          Math.pow(10, receiverToken.info.decimals)
-        )
+        tokenBalance: new Big(eligibleBalance.tokenBalanceString).mul(MINIMUM_RECEIVER_TOKEN)
       }));
 
     const tokenBalanceSum = eligibleBalances.reduce((p, c) => p.plus(c.tokenBalance), new Big(0));
@@ -45,21 +48,31 @@ export const getEligibleSlpDividendReceivers = withSLP(
     const filteredEligibleBalances = eligibleBalances.filter(eligibleBalance =>
       minimumReceiverBalance.lte(eligibleBalance.tokenBalance)
     );
+
     const filteredTokenBalanceSum = filteredEligibleBalances.reduce(
       (p, c) => p.plus(c.tokenBalance),
       new Big(0)
     );
 
-    filteredEligibleBalances.forEach(eligibleBalance => {
-      let eligibleQuantity = eligibleBalance.tokenBalance
-        .div(filteredTokenBalanceSum)
-        .mul(slpDividendSatoshiQuantity);
-      eligibleQuantity = new Big(Math.floor(eligibleQuantity)).div(
-        Math.pow(10, sendingToken.info.decimals)
+    for (let i = 0; i < filteredEligibleBalances.length; i++) {
+      const eligibleBalance = filteredEligibleBalances[i];
+      let eligibleSatoshisQuantity = new Big(
+        Math.floor(
+          eligibleBalance.tokenBalance.div(filteredTokenBalanceSum).mul(slpDividendSatoshiQuantity)
+        )
       );
+      if (remainingSatoshisQuantity.eq(0)) {
+        break;
+      } else if (remainingSatoshisQuantity.minus(eligibleSatoshisQuantity).lt(1)) {
+        eligibleSatoshisQuantity = remainingSatoshisQuantity;
+        remainingSatoshisQuantity = new Big(0);
+      } else {
+        remainingSatoshisQuantity = remainingSatoshisQuantity.minus(eligibleSatoshisQuantity);
+      }
+      const eligibleQuantity = new Big(eligibleSatoshisQuantity).div(SATOSHIS_PER_SENDING_TOKEN);
       slpDividendQuantities.push(eligibleQuantity);
       eligibleSlpDividendReceivers.push(eligibleBalance.slpAddress);
-    });
+    }
 
     const { encodedOpReturn, decodedOpReturn } = getEncodedOpReturnMessage(
       advancedOptions.opReturnMessage,
@@ -101,7 +114,9 @@ export const getEligibleSlpDividendReceivers = withSLP(
       slpDividendQuantities,
       txFee,
       encodedOpReturn,
-      decodedOpReturn
+      decodedOpReturn,
+      remainingSatoshisQuantity,
+      remainingQuantity: new Big(remainingSatoshisQuantity).div(SATOSHIS_PER_SENDING_TOKEN)
     };
   }
 );
