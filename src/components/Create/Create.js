@@ -159,7 +159,7 @@ const Create = () => {
       setFileList(undefined);
       setFile(undefined);
       setHash("");
-      return false;
+      throw e;
     }
   };
 
@@ -257,6 +257,7 @@ const Create = () => {
       });
       history.push("/portfolio");
     } catch (e) {
+      throw e;
       let message;
       if (e.message) {
         switch (e.message) {

@@ -7,7 +7,7 @@ import bitcoinWalletLogo from "../../assets/bitcoin-com-wallet-icon.png";
 import badgerWalletLogo from "../../assets/badger-icon.png";
 import pixelSquareLogo from "../../assets/pixel-square-icon.png";
 
-export const OnBoarding = ({ history }) => {
+export const OnBoarding = () => {
   const ContextValue = React.useContext(WalletContext);
   const { createWallet } = ContextValue;
   const [formData, setFormData] = useState({

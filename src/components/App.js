@@ -3,19 +3,20 @@ import "antd/dist/antd.less";
 import "../index.css";
 import styled from "styled-components";
 import { useSwipeable } from "react-swipeable";
-import { Layout, Menu, Radio, Tabs, Icon } from "antd";
-import Portfolio from "./Portfolio/Portfolio";
-import Create from "./Create/Create";
-import Dividends from "./Dividends/Dividends";
-import Configure from "./Configure/Configure";
+import { Layout, Menu, Radio, Tabs, Icon, notification } from "antd";
+import ViewPortfolio from "./Portfolio/ViewPortfolio";
+import ViewCreate from "./Create/ViewCreate";
+import ViewDividends from "./Dividends/ViewDividends";
+import ViewConfigure from "./Configure/ViewConfigure";
 import Audit from "./Audit/Audit";
 import NotFound from "./NotFound";
 import "./App.css";
 import { WalletContext } from "../utils/context";
 import logo from "../assets/logo.png";
 import { Route, Redirect, Link, Switch, useLocation, useHistory } from "react-router-dom";
+
 import { QRCode } from "./Common/QRCode";
-import DividendHistory from "./DividendHistory/DividendHistory";
+import ViewDividendHistory from "./DividendHistory/ViewDividendHistory";
 
 const { Header, Content, Sider, Footer } = Layout;
 const { TabPane } = Tabs;
@@ -88,7 +89,7 @@ const App = () => {
   const location = useLocation();
   const history = useHistory();
   const selectedKey = location && location.pathname ? location.pathname.substr(1) : "";
-
+  console.log("wallet :", wallet);
   const handleChange = e => {
     window.scrollTo(0, 0);
     setTimeout(() => {
@@ -338,22 +339,22 @@ const App = () => {
             >
               <Switch>
                 <Route path="/portfolio">
-                  <Portfolio />
+                  <ViewPortfolio />
                 </Route>
                 <Route path="/create">
-                  <Create />
+                  <ViewCreate />
                 </Route>
                 <Route path="/configure">
-                  <Configure />
+                  <ViewConfigure />
                 </Route>
                 <Route path="/audit">
                   <Audit />
                 </Route>
                 <Route path="/pay-dividends">
-                  <Dividends />
+                  <ViewDividends />
                 </Route>
                 <Route path="/dividends-history">
-                  <DividendHistory />
+                  <ViewDividendHistory />
                 </Route>
                 <Redirect exact from="/" to="/portfolio" />
                 <Route component={NotFound} />

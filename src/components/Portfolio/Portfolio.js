@@ -15,6 +15,8 @@ import {
 } from "antd";
 import { EnhancedCard } from "./EnhancedCard";
 import { WalletContext } from "../../utils/context";
+import useGlobalError from "../../utils/globalError/useGlobalError";
+import useAsyncError from "../../utils/globalError/useAsyncError";
 import { Meta } from "antd/lib/list/Item";
 import Img from "react-image";
 import makeBlockie from "ethereum-blockies-base64";
@@ -22,12 +24,14 @@ import Mint from "./Mint/Mint";
 import Transfer from "./Transfer/Transfer";
 import PayDividends from "./PayDividends/PayDividends";
 import Burn from "./Burn/Burn";
-import SendBCH from "./SendBCH/SendBCH";
+import ViewSendBCH from "./SendBCH/ViewSendBCH";
 import { PlaneIcon, HammerIcon, FireIcon } from "../Common/CustomIcons";
 import Paragraph from "antd/lib/typography/Paragraph";
-import { OnBoarding } from "../OnBoarding/OnBoarding";
+import ViewOnBoarding from "../OnBoarding/ViewOnBoarding";
 import getTokenTransactionHistory from "../../utils/getTokenTransactionHistory";
 import bchFlagLogo from "../../assets/4-bitcoin-cash-logo-flag.png";
+import { AddressValidators } from "./EnhancedInputs";
+import ViewTokenHistory from "./TokenHistory/ViewTokenHistory";
 
 export const SLP_TOKEN_ICONS_URL = "https://tokens.bch.sx/64";
 
@@ -80,25 +84,24 @@ export default () => {
     document.body.style.overflow = isModalOpen(action, selectedToken) ? "hidden" : "";
     return () => (document.body.style.overflow = "");
   }, [action, selectedToken]);
+  const throwError = useAsyncError({ shouldFallback: true });
 
   const getTokenHistory = async tokenInfo => {
     setLoadingTokenHistory(true);
     try {
-      const resp = await getTokenTransactionHistory(
-        wallet.slpAddresses,
-        tokenInfo,
-        slpBalancesAndUtxos.slpUtxos.filter(utxo => utxo.slpData.tokenId === tokenInfo.tokenId)
-      );
-      setHistory(resp);
+      throw new Error("asas");
     } catch (err) {
-      const message = err.message || err.error || JSON.stringify(err);
-
-      notification.error({
-        message: "Error",
-        description: message,
-        duration: 2
-      });
-      console.error(err);
+      console.log("JSON.stringfy(err) :", JSON.stringify(err));
+      throwError(err);
+      // return {throwError,error:err};
+      // addError({ message: "x1" });
+      // const message = err.message || err.error || JSON.stringify(err);
+      // notification.error({
+      //   message: "Error",
+      //   description: "x",
+      //   duration: 2
+      // });
+      // console.error(err);
     }
 
     setLoadingTokenHistory(false);
@@ -213,7 +216,7 @@ export default () => {
               setOuterAction(!outerAction);
             }}
             renderExpanded={() =>
-              action === "sendBCH" && <SendBCH onClose={onClose} outerAction={outerAction} />
+              action === "sendBCH" && <ViewSendBCH onClose={onClose} outerAction={outerAction} />
             }
             onClose={onClose}
           >
@@ -292,11 +295,11 @@ export default () => {
                   token={token}
                   loading={!token.info}
                   expand={selectedToken && token.tokenId === selectedToken.tokenId}
-                  onClick={() =>
+                  onClick={() => {
                     setSelectedToken(
                       !selectedToken || token.tokenId !== selectedToken.tokenId ? token : null
-                    )
-                  }
+                    );
+                  }}
                   key={`card-${token.tokenId}`}
                   style={{ marginTop: "8px", textAlign: "left" }}
                   onClose={onClose}
@@ -381,92 +384,7 @@ export default () => {
                       selectedToken &&
                       token.tokenId === selectedToken.tokenId &&
                       tokenCardAction === "history" ? (
-                        <>
-                          <p>Transaction History (max 30)</p>
-                          {history.map(el => (
-                            <div
-                              key={`history-${el.txid}`}
-                              style={{
-                                background:
-                                  el.balance > 0
-                                    ? el.detail.transactionType === "BURN"
-                                      ? "#FDF1F0"
-                                      : "#D4EFFC"
-                                    : el.detail.transactionType.includes("BURN")
-                                    ? "#FDF1F0"
-                                    : "#ffd59a",
-                                color: "black",
-                                borderRadius: "12px",
-                                marginBottom: "18px",
-                                padding: "8px",
-                                boxShadow: "6px 6px #888888",
-                                width: "97%"
-                              }}
-                            >
-                              {el.detail.transactionType !== "BURN_ALL" ? (
-                                <a
-                                  href={`https://explorer.bitcoin.com/bch/tx/${el.txid}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  <p>
-                                    {el.balance > 0
-                                      ? el.detail.transactionType === "GENESIS"
-                                        ? "Genesis"
-                                        : el.detail.transactionType === "MINT"
-                                        ? "Mint"
-                                        : el.detail.transactionType === "BURN"
-                                        ? "Burn"
-                                        : "Received"
-                                      : el.detail.transactionType === "BURN_BATON"
-                                      ? "Burn Baton"
-                                      : "Sent"}
-                                  </p>
-                                  <p>{el.date.toLocaleString()}</p>
-
-                                  {el.detail.transactionType === "BURN" &&
-                                    (el.detail.burnAmount ? (
-                                      <p>{`${el.detail.burnAmount} ${el.detail.symbol} burned`}</p>
-                                    ) : (
-                                      <p>Burn amount could not be found for this transaction</p>
-                                    ))}
-
-                                  {el.detail.transactionType !== "BURN_BATON" && (
-                                    <p>{`${
-                                      el.balance > 0 && el.detail.transactionType !== "BURN"
-                                        ? "+"
-                                        : ""
-                                    }${el.balance} ${el.detail.symbol} ${
-                                      el.detail.transactionType === "BURN" ? "left" : ""
-                                    }`}</p>
-                                  )}
-
-                                  <Paragraph
-                                    small
-                                    ellipsis
-                                    style={{
-                                      whiteSpace: "nowrap",
-                                      color: "black",
-                                      maxWidth: "90%"
-                                    }}
-                                  >
-                                    {el.txid}
-                                  </Paragraph>
-                                  <p>{`Confirmations: ${el.confirmations}`}</p>
-                                </a>
-                              ) : (
-                                <p>Burn All</p>
-                              )}
-                            </div>
-                          ))}
-                          <a
-                            href={`https://explorer.bitcoin.com/bch/address/${wallet.Path245.slpAddress}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <p>Full History</p>
-                          </a>
-                        </>
+                        <ViewTokenHistory history={history} wallet={wallet} />
                       ) : null}
 
                       {selectedToken && action === "mint" && tokenCardAction === null ? (
@@ -575,7 +493,7 @@ export default () => {
       ) : null}
       <Col span={24} style={{ marginTop: "8px" }}>
         {!loading && !tokens.length && wallet ? <Empty description="No tokens found" /> : null}
-        {!loading && !tokens.length && !wallet ? <OnBoarding /> : null}
+        {!loading && !tokens.length && !wallet ? <ViewOnBoarding /> : null}
       </Col>
     </Row>
   );

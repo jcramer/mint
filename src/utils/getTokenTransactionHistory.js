@@ -1215,7 +1215,12 @@ const getTokenTransactionHistory = async (SLP, slpAddresses, tokenInfo, tokenUtx
     return tokenHistory;
   } catch (err) {
     console.log("err", err);
-    return [];
+    // const ff = () => {
+    //   throw err;
+    // };
+    // ff();
+
+    throw err;
   }
 };
 

@@ -1,15 +1,12 @@
-import React from "react";
+import * as React from "react";
 import ReactDOM from "react-dom";
 import "./index.css";
-import App from "./components/App";
+import View from "./components/View/View";
 import { WalletProvider } from "./utils/context";
-import { HashRouter as Router } from "react-router-dom";
 
 ReactDOM.render(
   <WalletProvider>
-    <Router>
-      <App />
-    </Router>
+    <View />
   </WalletProvider>,
   document.getElementById("root")
 );
