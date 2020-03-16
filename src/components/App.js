@@ -79,13 +79,14 @@ const StyledTabsMenu = styled.div`
   }
 `;
 
-const App = () => {
+const App = props => {
   const [collapsed, setCollapsed] = React.useState(window.innerWidth < 768);
   const [mobile, setMobile] = React.useState(false);
   const [address, setAddress] = React.useState("slpAddress");
   const ContextValue = React.useContext(WalletContext);
   const { wallet } = ContextValue;
   const radio = React.useRef(null);
+  const view = React.useRef(null);
   const location = useLocation();
   const history = useHistory();
   const selectedKey = location && location.pathname ? location.pathname.substr(1) : "";
@@ -99,7 +100,10 @@ const App = () => {
       }
     }, 100);
   };
-
+  console.log("view :", view);
+  React.useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
   const handleChangeAddress = e => {
     setAddress(address === "cashAddress" ? "slpAddress" : "cashAddress");
   };
@@ -339,7 +343,7 @@ const App = () => {
             >
               <Switch>
                 <Route path="/portfolio">
-                  <ViewPortfolio />
+                  <ViewPortfolio ref={view} />
                 </Route>
                 <Route path="/create">
                   <ViewCreate />

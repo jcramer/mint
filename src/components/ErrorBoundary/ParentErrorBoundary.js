@@ -1,6 +1,6 @@
 import * as React from "react";
 import { notification, Icon, Collapse, Typography, Spin } from "antd";
-import { WalletContext } from "../../utils/context";
+
 import { isEmpty } from "lodash";
 import styled from "styled-components";
 
@@ -49,7 +49,10 @@ const StyledIcon = styled.div`
 `;
 
 const handleErrorMessage = e => {
+  console.log("e :", e);
   const obj = JSON.parse((e || {}).message || "{}");
+  console.log("obj :", isEmpty(obj));
+
   return {
     shouldFallback: isEmpty(obj) ? true : obj && obj.stack && obj.message && obj.fallback,
     error: isEmpty(obj)
@@ -59,9 +62,7 @@ const handleErrorMessage = e => {
       : JSON.stringify(obj.error)
   };
 };
-class ErrorBoundary extends React.Component {
-  static contextType = WalletContext;
-
+class ParentErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
 
@@ -116,10 +117,7 @@ class ErrorBoundary extends React.Component {
         description: error,
         duration: 3
       });
-    } else {
-      this.context.setError(e);
     }
-
     this.setState({
       hasError: true,
       fallback: shouldFallback,
@@ -128,7 +126,6 @@ class ErrorBoundary extends React.Component {
   }
 
   render() {
-    console.log("this.state :", this.state);
     if (this.state.hasError && this.state.fallback) {
       return (
         <StyledFallback>
@@ -155,4 +152,4 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-export default ErrorBoundary;
+export default ParentErrorBoundary;

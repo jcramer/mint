@@ -7,6 +7,7 @@ const useAsyncError = ({ shouldFallback }) => {
   return React.useCallback(
     e =>
       setError(() => {
+        console.log("e :", e.stack);
         throw new Error(
           JSON.stringify({
             message: handleError(e),

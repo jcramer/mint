@@ -10,6 +10,7 @@ import usePrevious from "./usePrevious";
 import withSLP from "./withSLP";
 import getSlpBanlancesAndUtxos from "./getSlpBanlancesAndUtxos";
 import DividendsManager from "./dividends/dividends-manager";
+import useAsyncError from "./globalError/useAsyncError";
 
 const normalizeSlpBalancesAndUtxos = (SLP, slpBalancesAndUtxos, wallet) => {
   slpBalancesAndUtxos.nonSlpUtxos.forEach(utxo => {
@@ -41,7 +42,8 @@ const update = withSLP(async (SLP, { wallet, setWalletState }) => {
     const newState = {
       balances: {},
       tokens: [],
-      slpBalancesAndUtxos: []
+      slpBalancesAndUtxos: [],
+      error: null
     };
 
     newState.slpBalancesAndUtxos = normalizeSlpBalancesAndUtxos(SLP, slpBalancesAndUtxos, wallet);
@@ -49,7 +51,9 @@ const update = withSLP(async (SLP, { wallet, setWalletState }) => {
     newState.tokens = tokens;
 
     setWalletState(newState);
-  } catch (error) {}
+  } catch (error) {
+    setWalletState(prev => ({ ...prev, error: null }));
+  }
 });
 
 export const useWallet = () => {
@@ -57,11 +61,15 @@ export const useWallet = () => {
   const [walletState, setWalletState] = useState({
     balances: {},
     tokens: [],
-    slpBalancesAndUtxos: []
+    slpBalancesAndUtxos: [],
+    error: null
   });
   const [loading, setLoading] = useState(true);
-  const { balances, tokens, slpBalancesAndUtxos } = walletState;
+  const { balances, tokens, slpBalancesAndUtxos, loadingUpdate, error } = walletState;
+  const setError = error => setWalletState(prev => ({ ...prev, error }));
   const previousBalances = usePrevious(balances);
+
+  const throwError = useAsyncError({ shouldFallback: false });
 
   if (
     previousBalances &&
@@ -119,6 +127,8 @@ export const useWallet = () => {
         wallet: newWallet,
         setWalletState
       }).finally(() => setLoading(false));
-    }
+    },
+    error,
+    setError
   };
 };

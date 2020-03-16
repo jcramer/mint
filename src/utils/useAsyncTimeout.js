@@ -13,9 +13,13 @@ const useAsyncTimeout = (callback, delay) => {
       const promise = savedCallback.current();
 
       if (promise instanceof Promise) {
-        promise.then(() => {
-          id = setTimeout(tick, delay);
-        });
+        promise
+          .then(() => {
+            id = setTimeout(tick, delay);
+          })
+          .catch(err => {
+            throw err;
+          });
       } else {
         id = setTimeout(tick, delay);
       }

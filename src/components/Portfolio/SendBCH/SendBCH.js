@@ -8,6 +8,7 @@ import { PlaneIcon } from "../../Common/CustomIcons";
 import { QRCode } from "../../Common/QRCode";
 import { sendBch, calcFee } from "../../../utils/sendBch";
 import { FormItemWithMaxAddon, FormItemWithQRCodeAddon } from "../EnhancedInputs";
+import useAsyncError from "../../../utils/globalError/useAsyncError";
 import getTransactionHistory from "../../../utils/getTransactionHistory";
 import withSLP, { getRestUrl } from "../../../utils/withSLP";
 
@@ -29,6 +30,8 @@ const SendBCH = ({ onClose, outerAction }) => {
   const [action, setAction] = useState("send");
   const [history, setHistory] = useState(null);
   const [bchToDollar, setBchToDollar] = useState(null);
+
+  const throwError = useAsyncError({ shouldFallback: false });
 
   useEffect(() => setAction("send"), [outerAction]);
 
@@ -107,6 +110,7 @@ const SendBCH = ({ onClose, outerAction }) => {
   const getBchHistory = withSLP(async SLP => {
     setLoading(true);
     try {
+      throw new Error("asdasd");
       const details = await SLP.Address.details(wallet.cashAddresses);
       const resp = await getTransactionHistory(
         wallet.cashAddresses,
@@ -124,6 +128,7 @@ const SendBCH = ({ onClose, outerAction }) => {
         });
       setHistory(resp);
     } catch (err) {
+      throwError(err);
       const message = err.message || err.error || JSON.stringify(err);
 
       notification.error({

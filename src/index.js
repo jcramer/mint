@@ -3,11 +3,14 @@ import ReactDOM from "react-dom";
 import "./index.css";
 import View from "./components/View/View";
 import { WalletProvider } from "./utils/context";
+import ParentErrorBoundary from "./components/ErrorBoundary/ParentErrorBoundary";
 
 ReactDOM.render(
-  <WalletProvider>
-    <View />
-  </WalletProvider>,
+  <ParentErrorBoundary>
+    <WalletProvider>
+      <View />
+    </WalletProvider>
+  </ParentErrorBoundary>,
   document.getElementById("root")
 );
 

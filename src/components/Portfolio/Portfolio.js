@@ -89,22 +89,17 @@ export default () => {
   const getTokenHistory = async tokenInfo => {
     setLoadingTokenHistory(true);
     try {
-      throw new Error("asas");
+      const resp = await getTokenTransactionHistory(
+        wallet.slpAddresses,
+        tokenInfo,
+        slpBalancesAndUtxos.slpUtxos.filter(utxo => utxo.slpData.tokenId === tokenInfo.tokenId)
+      );
+      setHistory(() => async () => new Promise((resolve, _) => resolve(resp)));
     } catch (err) {
-      console.log("JSON.stringfy(err) :", JSON.stringify(err));
-      throwError(err);
-      // return {throwError,error:err};
-      // addError({ message: "x1" });
-      // const message = err.message || err.error || JSON.stringify(err);
-      // notification.error({
-      //   message: "Error",
-      //   description: "x",
-      //   duration: 2
-      // });
-      // console.error(err);
+      setHistory(() => async () => new Promise((_, reject) => reject(err)));
+    } finally {
+      setLoadingTokenHistory(false);
     }
-
-    setLoadingTokenHistory(false);
   };
 
   const handleChangeAction = (e, tokenId) => {

@@ -4,7 +4,7 @@ import ErrorBoundary from "../../ErrorBoundary/ErrorBoundary";
 
 const ViewTokenHistory = ({ history, wallet }) => (
   <ErrorBoundary>
-    <TokenHistory history={history} />
+    <TokenHistory history={history} wallet={wallet} />
   </ErrorBoundary>
 );
 
