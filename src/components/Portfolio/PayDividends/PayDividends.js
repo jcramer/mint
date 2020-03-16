@@ -3,7 +3,7 @@ import styled from "styled-components";
 import Img from "react-image";
 import makeBlockie from "ethereum-blockies-base64";
 import { WalletContext } from "../../../utils/context";
-import { sendDividends } from "../../../utils/dividends/sendDividends";
+import { createDividends } from "../../../utils/dividends/createDividends";
 import {
   Card,
   Icon,
@@ -27,7 +27,7 @@ import withSLP, { getRestUrl } from "../../../utils/withSLP";
 import { useDividendsStats } from "./useDividendsStats";
 import { useHistory } from "react-router";
 import { DUST } from "../../../utils/sendBch";
-import { sendSlpDividends } from "../../../utils/slpDividends/sendSlpDividends";
+import { createSlpDividends } from "../../../utils/slpDividends/createSlpDividends";
 import SlpDividends from "../../../utils/slpDividends/slpDividends";
 
 const StyledPayDividends = styled.div`
@@ -102,7 +102,7 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
     tokenId: initialToken ? initialToken.tokenId : null,
     maxAmount: 0,
     maxAmountChecked: false,
-    slpDividendQuantity: ""
+    slpAmount: ""
   });
   const [advancedOptions, setAdvancedOptions] = useState({
     ignoreOwnAddress: true,
@@ -123,7 +123,7 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
     disabled: !/^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) || !token
   });
 
-  const validSlpDividend = sendingToken && formData.slpDividendQuantity >= 0;
+  const validSlpDividend = sendingToken && formData.slpAmount >= 0;
   const validBchDividend =
     formData.amount > DUST && (!stats.maxAmount || formData.amount <= stats.maxAmount);
   const submitEnabled =
@@ -157,17 +157,24 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
     const { amount } = formData;
     try {
       if (type === Types.BCH) {
-        await sendDividends(wallet, slpBalancesAndUtxos.nonSlpUtxos, advancedOptions, {
-          value: amount,
-          token: token
-        });
-      } else {
-        await sendSlpDividends(
+        await createDividends(
           wallet,
+          stats.balances,
+          slpBalancesAndUtxos.nonSlpUtxos,
+          advancedOptions,
+          {
+            value: amount,
+            token: token
+          }
+        );
+      } else {
+        await createSlpDividends(
+          wallet,
+          stats.balances,
           [...slpBalancesAndUtxos.nonSlpUtxos, ...slpBalancesAndUtxos.slpUtxos],
           advancedOptions,
           {
-            slpDividendQuantity: formData.slpDividendQuantity,
+            quantity: formData.slpAmount,
             receiverToken: token,
             sendingToken
           }
@@ -262,7 +269,7 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
   };
 
   const onMaxSendingToken = () => {
-    setFormData({ ...formData, slpDividendQuantity: sendingToken.balance, dirty: true });
+    setFormData({ ...formData, slpAmount: sendingToken.balance, dirty: true });
   };
 
   return (
@@ -452,11 +459,11 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
                                 onMax={onMaxSendingToken}
                                 inputProps={{
                                   prefix: "",
-                                  name: "slpDividendQuantity",
+                                  name: "slpAmount",
                                   placeholder: "Amount",
                                   onChange: e => handleChange(e),
                                   required: true,
-                                  value: formData.slpDividendQuantity
+                                  value: formData.slpAmount
                                 }}
                               />
                             )}

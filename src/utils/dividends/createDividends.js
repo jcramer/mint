@@ -82,7 +82,7 @@ export const getEligibleAddresses = withSLP(
   }
 );
 
-export const sendDividends = async (wallet, utxos, advancedOptions, { value, token }) => {
+export const createDividends = async (wallet, utxos, advancedOptions, { value, token }) => {
   const outputs = await getBalancesForToken(token.tokenId);
 
   const { addresses, values } = getEligibleAddresses(

@@ -2,10 +2,11 @@ export default class Dividends {
   static BATCH_SIZE = 2500;
 
   static Status = {
-    IN_PROGRESS: 0,
-    PAUSED: 1,
-    CANCELED: 2,
-    CRASHED: 3
+    PREPARING: "PREPARING",
+    RUNNING: "RUNNING",
+    PAUSED: "PAUSED",
+    CANCELED: "CANCELED",
+    CRASHED: "CRASHED"
   };
 
   constructor({
@@ -16,7 +17,7 @@ export default class Dividends {
     opReturn
   }) {
     this.progress = 0;
-    this.status = Dividends.Status.IN_PROGRESS;
+    this.status = Dividends.Status.RUNNING;
     this.token = token;
     this.startDate = Date.now();
     this.endDate = null;

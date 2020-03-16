@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Img from "react-image";
 import makeBlockie from "ethereum-blockies-base64";
 import { WalletContext } from "../../utils/context";
-import { Icon, Row, Col, Empty, Progress, Descriptions, Button, Alert } from "antd";
+import { Icon, Row, Col, Empty, Progress, Descriptions, Button, Alert, Spin } from "antd";
 import styled, { createGlobalStyle } from "styled-components";
 import moment from "moment";
 import { useEffect } from "react";
@@ -10,7 +10,7 @@ import Dividends from "../../utils/dividends/dividends";
 import { SLP_TOKEN_ICONS_URL } from "../Portfolio/Portfolio";
 import { EnhancedCard } from "../Portfolio/EnhancedCard";
 import bchFlagLogo from "../../assets/4-bitcoin-cash-logo-flag.png";
-import { getEncodedOpReturnMessage } from "../../utils/dividends/sendDividends";
+import { getEncodedOpReturnMessage } from "../../utils/dividends/createDividends";
 import ButtonGroup from "antd/lib/button/button-group";
 import SlpDividends from "../../utils/slpDividends/slpDividends";
 
@@ -168,6 +168,19 @@ const DividendHistory = () => {
                         closable={false}
                       />
                     )}
+                    {dividend.status === Dividends.Status.PREPARING && (
+                      <Alert
+                        style={{ marginBottom: 14 }}
+                        message={
+                          <>
+                            <Spin size="small" />
+                            &nbsp;&nbsp;Preparing...
+                          </>
+                        }
+                        type="info"
+                        closable={false}
+                      />
+                    )}
                     {dividend.status === Dividends.Status.CRASHED && (
                       <Alert
                         style={{ marginBottom: 14 }}
@@ -181,30 +194,28 @@ const DividendHistory = () => {
                         closable={false}
                       />
                     )}
-                    {dividend.progress < 1 && dividend.status !== Dividends.Status.CANCELED ? (
+                    {dividend.progress < 1 && dividend.status === Dividends.Status.RUNNING && (
                       <ButtonGroup>
-                        {dividend.status !== Dividends.Status.PAUSED &&
-                        dividend.status !== Dividends.Status.CRASHED ? (
-                          <Button
-                            type="primary"
-                            icon="pause-circle"
-                            onClick={() => updateDividendStatus(dividend, Dividends.Status.PAUSED)}
-                          >
-                            Pause
-                          </Button>
-                        ) : (
-                          <Button
-                            type="primary"
-                            icon="play-circle"
-                            onClick={() =>
-                              updateDividendStatus(dividend, Dividends.Status.IN_PROGRESS)
-                            }
-                          >
-                            Resume
-                          </Button>
-                        )}
+                        <Button
+                          type="primary"
+                          icon="pause-circle"
+                          onClick={() => updateDividendStatus(dividend, Dividends.Status.PAUSED)}
+                        >
+                          Pause
+                        </Button>
                       </ButtonGroup>
-                    ) : null}
+                    )}
+                    {dividend.status === Dividends.Status.PAUSED && (
+                      <ButtonGroup>
+                        <Button
+                          type="primary"
+                          icon="play-circle"
+                          onClick={() => updateDividendStatus(dividend, Dividends.Status.RUNNING)}
+                        >
+                          Resume
+                        </Button>
+                      </ButtonGroup>
+                    )}
                     <StyledDescriptions bordered column={1}>
                       <Descriptions.Item label="Receivers">
                         {dividend.receiverCount}
@@ -229,6 +240,21 @@ const DividendHistory = () => {
                           {moment(dividend.endDate).format("LL LTS")}
                         </Descriptions.Item>
                       ) : null}
+                      {dividend.preparingTxs &&
+                        dividend.preparingTxs.map((tx, index) => (
+                          <Descriptions.Item
+                            key={tx}
+                            label={`Preparation transaction ${index + 1}`}
+                          >
+                            <a
+                              href={`https://explorer.bitcoin.com/bch/tx/${tx}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {tx}
+                            </a>
+                          </Descriptions.Item>
+                        ))}
                       {dividend.txs.map((tx, index) => (
                         <Descriptions.Item key={tx} label={`Transaction ${index + 1}`}>
                           <a
@@ -298,12 +324,12 @@ const DividendHistory = () => {
                     />
                   </StyledSummaryIcons>
                   <StyledDescriptions column={1}>
-                    <Descriptions.Item label={dividend.token ? "BCH Amount" : "Sending Token"}>
+                    <Descriptions.Item label={dividend.token ? "BCH Amount" : "Sending token"}>
                       {dividend.token
                         ? dividend.dividendQuantity
                         : dividend.sendingToken.info.symbol}
                     </Descriptions.Item>
-                    <Descriptions.Item label={dividend.token ? "Token" : "Receiving Token"}>
+                    <Descriptions.Item label="Receiver token">
                       {dividend.token
                         ? dividend.token.info.symbol
                         : dividend.receiverToken.info.symbol}

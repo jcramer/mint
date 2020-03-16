@@ -1,14 +1,14 @@
 import DividendsPayment from "./dividends";
 import { sendBch, SEND_BCH_ERRORS } from "../sendBch";
 import Dividends from "./dividends";
-import { getEncodedOpReturnMessage } from "./sendDividends";
+import { getEncodedOpReturnMessage } from "./createDividends";
 
 export default class DividendsManager {
   static async update({ wallet, utxos }) {
     try {
       const dividends = Object.values(DividendsPayment.getAll());
       const dividend = dividends.find(
-        dividend => dividend.progress < 1 && dividend.status === Dividends.Status.IN_PROGRESS
+        dividend => dividend.progress < 1 && dividend.status === Dividends.Status.RUNNING
       );
       if (dividend && utxos) {
         await DividendsManager.updateDividend({ wallet, dividend, utxos });
@@ -45,7 +45,7 @@ export default class DividendsManager {
       const oldDividend = Dividends.get(dividend);
       if (
         oldDividend &&
-        dividend.status === Dividends.Status.IN_PROGRESS &&
+        dividend.status === Dividends.Status.RUNNING &&
         dividend.status !== oldDividend.status
       ) {
         dividend.status = oldDividend.status;

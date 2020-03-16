@@ -1,11 +1,13 @@
 export default class SlpDividends {
   static BATCH_SIZE = 18;
+  static FAN_OUT_BATCH_SIZE = 25 * SlpDividends.BATCH_SIZE;
 
   static Status = {
-    IN_PROGRESS: 0,
-    PAUSED: 1,
-    CANCELED: 2,
-    CRASHED: 3
+    PREPARING: "PREPARING",
+    RUNNING: "RUNNING",
+    PAUSED: "PAUSED",
+    CANCELED: "CANCELED",
+    CRASHED: "CRASHED"
   };
 
   static Errors = {
@@ -18,26 +20,22 @@ export default class SlpDividends {
     [SlpDividends.Errors.NO_ELIGIBLE_RECEIVERS]: "No eligible receivers"
   };
 
-  constructor({
-    sendingToken,
-    receiverToken,
-    slpDividendQuantity,
-    eligibleSlpDividendReceivers,
-    slpDividendQuantities,
-    opReturn
-  }) {
+  constructor({ sendingToken, receiverToken, quantity, fanoutWallets, receivers, opReturn }) {
     this.progress = 0;
-    this.status = SlpDividends.Status.IN_PROGRESS;
+    this.status = fanoutWallets.length
+      ? SlpDividends.Status.PREPARING
+      : SlpDividends.Status.RUNNING;
     this.sendingToken = sendingToken;
     this.receiverToken = receiverToken;
     this.startDate = Date.now();
     this.endDate = null;
+    this.preparingTxs = [];
     this.txs = [];
-    this.receiverCount = eligibleSlpDividendReceivers.length;
-    this.remainingReceivers = eligibleSlpDividendReceivers;
-    this.remainingQuantities = slpDividendQuantities;
+    this.receiverCount = receivers.length;
+    this.remainingReceivers = receivers;
     this.opReturn = opReturn;
-    this.slpDividendQuantity = slpDividendQuantity;
+    this.quantity = quantity;
+    this.fanoutWallets = fanoutWallets;
     this.error = "";
   }
 
