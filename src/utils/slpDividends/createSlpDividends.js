@@ -6,6 +6,8 @@ import SlpDividends from "./slpDividends";
 
 export const SLP_DIVIDEND_SATOSHIS_PER_BYTE = 1.01;
 
+export const ESTIMATED_SATOSHIS_FEE_PER_BATCH = 1300;
+
 export const getEligibleSlpDividendReceivers = withSLP(
   (
     SLP,
@@ -83,56 +85,70 @@ export const getEligibleSlpDividendReceivers = withSLP(
       sendingToken.tokenId
     );
 
-    let txFee = 0;
-
-    const sendingTokenUtxos = utxos.filter(
-      utxo => utxo.slpData && utxo.slpData.tokenId === sendingToken.tokenId
-    );
+    let estimatedTotalFee = new Big(0);
 
     // fan-out is required
     if (receivers.length > SlpDividends.FAN_OUT_BATCH_SIZE) {
       for (let i = 0; i < receivers.length; i += SlpDividends.FAN_OUT_BATCH_SIZE) {
-        const quantities = receivers
+        const fanoutQuantity = receivers
           .slice(i, i + SlpDividends.FAN_OUT_BATCH_SIZE)
           .reduce((p, c) => p.plus(new Big(c.quantity)), new Big(0));
+
+        // fan-out fee per wallet
+        let fee = new Big(0);
+        for (let j = i; j <= i + SlpDividends.FAN_OUT_BATCH_SIZE; j += SlpDividends.BATCH_SIZE) {
+          const receiversPerBatch = receivers.slice(j, j + SlpDividends.BATCH_SIZE);
+
+          if (receiversPerBatch.length === 0) {
+            break;
+          }
+
+          fee = fee
+            .plus(SLP.BitcoinCash.toBitcoinCash(ESTIMATED_SATOSHIS_FEE_PER_BATCH))
+            .plus(new Big(receiversPerBatch.length).mul(SLP.BitcoinCash.toBitcoinCash(546)));
+          estimatedTotalFee = estimatedTotalFee.plus(fee);
+        }
 
         const pk = new bitcore.PrivateKey();
         fanoutWallets.push({
           cashAddress: pk.toAddress().toString(),
           slpAddress: SLP.Address.toSLPAddress(pk.toAddress().toString()),
           wif: pk.toWIF(),
-          quantity: quantities.toFixed(sendingToken.info.decimals),
+          quantity: fanoutQuantity.toFixed(sendingToken.info.decimals),
           lastReceiverIndex: i,
-          prepared: false
+          prepared: false,
+          completed: false,
+          fee: fee.toFixed(8)
         });
       }
 
+      // fan-out preparation fee
       for (let i = 0; i < fanoutWallets.length; i += SlpDividends.BATCH_SIZE) {
         const fanoutWalletSlice = fanoutWallets.slice(i, i + SlpDividends.BATCH_SIZE);
         const byteCount = SLP.BitcoinCash.getByteCount(
-          { P2PKH: sendingTokenUtxos.length + 1 },
+          { P2PKH: utxos.length },
           { P2PKH: fanoutWalletSlice.length + 3 }
         );
-        txFee += SLP.BitcoinCash.toBitcoinCash(
-          Math.floor(SLP_DIVIDEND_SATOSHIS_PER_BYTE * byteCount).toFixed(8)
+        estimatedTotalFee = estimatedTotalFee.plus(
+          SLP.BitcoinCash.toBitcoinCash(Math.floor(SLP_DIVIDEND_SATOSHIS_PER_BYTE * byteCount))
         );
       }
-    }
-
-    for (let i = 0; i < receivers.length; i += SlpDividends.BATCH_SIZE) {
-      const byteCount = SLP.BitcoinCash.getByteCount(
-        { P2PKH: 2 }, // token utxo + bch utxo,
-        { P2PKH: receivers.slice(i, SlpDividends.BATCH_SIZE).length + 3 }
-      );
-      txFee += SLP.BitcoinCash.toBitcoinCash(
-        Math.floor(SLP_DIVIDEND_SATOSHIS_PER_BYTE * byteCount).toFixed(8)
-      );
+    } else {
+      for (let i = 0; i < receivers.length; i += SlpDividends.BATCH_SIZE) {
+        const byteCount = SLP.BitcoinCash.getByteCount(
+          { P2PKH: utxos.length },
+          { P2PKH: receivers.slice(i, SlpDividends.BATCH_SIZE).length + 3 }
+        );
+        estimatedTotalFee = estimatedTotalFee.plus(
+          SLP.BitcoinCash.toBitcoinCash(Math.floor(SLP_DIVIDEND_SATOSHIS_PER_BYTE * byteCount))
+        );
+      }
     }
 
     return {
       receivers,
       quantities,
-      txFee,
+      estimatedTotalFee,
       encodedOpReturn,
       decodedOpReturn,
       remainingQuantity: new Big(remainingSatoshisQuantity).div(SATOSHIS_PER_SENDING_TOKEN),

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Img from "react-image";
 import makeBlockie from "ethereum-blockies-base64";
 import { WalletContext } from "../../utils/context";
-import { Icon, Row, Col, Empty, Progress, Descriptions, Button, Alert, Spin } from "antd";
+import { Icon, Row, Col, Empty, Progress, Descriptions, Button, Alert, Spin, message } from "antd";
 import styled, { createGlobalStyle } from "styled-components";
 import moment from "moment";
 import { useEffect } from "react";
@@ -13,6 +13,7 @@ import bchFlagLogo from "../../assets/4-bitcoin-cash-logo-flag.png";
 import { getEncodedOpReturnMessage } from "../../utils/dividends/createDividends";
 import ButtonGroup from "antd/lib/button/button-group";
 import SlpDividends from "../../utils/slpDividends/slpDividends";
+import SlpDividendsManager from "../../utils/slpDividends/slpDividendsManager";
 
 const StyledCol = styled(Col)`
   margin-top: 8px;
@@ -89,15 +90,34 @@ const StyledCard = styled(EnhancedCard)`
   }
 `;
 
+const StyledAlert = styled(Alert)`
+  margin-bottom: 14px !important;
+
+  .ant-alert-message {
+    display: flex;
+    align-items: center;
+  }
+`;
+
 const DividendHistory = () => {
-  const { balances } = React.useContext(WalletContext);
+  const { balances, wallet } = React.useContext(WalletContext);
   const [dividends, setDividends] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [recoveringFunds, setRecoveringFuds] = useState(false);
 
   useEffect(() => {
     const dividends = Object.values(Dividends.getAll());
     const slpDividends = Object.values(SlpDividends.getAll());
-    setDividends([...dividends, ...slpDividends].sort((a, b) => b.startDate - a.startDate));
+    const allDividends = [...dividends, ...slpDividends].sort((a, b) => b.startDate - a.startDate);
+    setDividends(allDividends);
+
+    const newlyCreatedDividend = allDividends.find(
+      dividend => dividend.startDate >= Date.now() - 5000
+    );
+
+    if (newlyCreatedDividend) {
+      setSelected(newlyCreatedDividend);
+    }
   }, [balances]);
 
   const isEmpty = !dividends || dividends.length === 0;
@@ -127,6 +147,25 @@ const DividendHistory = () => {
     }
   };
 
+  const recoverFunds = async slpDividend => {
+    setRecoveringFuds(true);
+    try {
+      await SlpDividendsManager.recoverFunds({ wallet, slpDividend });
+      slpDividend.fundsRecovered = true;
+      // SlpDividends.save(slpDividend);
+      // setSelected(slpDividend);
+      message.success("Funds successfully recovered!");
+    } catch (error) {
+      message.error(
+        error.friendlyMessage
+          ? error.friendlyMessage
+          : `Unable to recover the funds. Cause: ${error.error || error.messae}`
+      );
+      console.error(error.message);
+    }
+    setRecoveringFuds(false);
+  };
+
   return (
     <>
       <GlobalStyle />
@@ -142,9 +181,8 @@ const DividendHistory = () => {
                 renderExpanded={() => (
                   <>
                     <br />
-                    {dividend.progress === 1 && (
-                      <Alert
-                        style={{ marginBottom: 14 }}
+                    {dividend.status === Dividends.Status.COMPLETED && (
+                      <StyledAlert
                         message={
                           <>
                             <Icon type="info-circle" />
@@ -155,9 +193,20 @@ const DividendHistory = () => {
                         closable={false}
                       />
                     )}
+                    {dividend.status === Dividends.Status.PAUSED && (
+                      <StyledAlert
+                        message={
+                          <>
+                            <Icon type="pause-circle" />
+                            Paused
+                          </>
+                        }
+                        type="info"
+                        closable={false}
+                      />
+                    )}
                     {dividend.status === Dividends.Status.CANCELED && (
-                      <Alert
-                        style={{ marginBottom: 14 }}
+                      <StyledAlert
                         message={
                           <>
                             <Icon type="stop" />
@@ -168,9 +217,20 @@ const DividendHistory = () => {
                         closable={false}
                       />
                     )}
+                    {dividend.status === Dividends.Status.RUNNING && (
+                      <StyledAlert
+                        message={
+                          <>
+                            <Spin size="small" />
+                            &nbsp;&nbsp;Running...
+                          </>
+                        }
+                        type="info"
+                        closable={false}
+                      />
+                    )}
                     {dividend.status === Dividends.Status.PREPARING && (
-                      <Alert
-                        style={{ marginBottom: 14 }}
+                      <StyledAlert
                         message={
                           <>
                             <Spin size="small" />
@@ -182,8 +242,7 @@ const DividendHistory = () => {
                       />
                     )}
                     {dividend.status === Dividends.Status.CRASHED && (
-                      <Alert
-                        style={{ marginBottom: 14 }}
+                      <StyledAlert
                         message={
                           <>
                             <Icon type="stop" />
@@ -194,7 +253,7 @@ const DividendHistory = () => {
                         closable={false}
                       />
                     )}
-                    {dividend.progress < 1 && dividend.status === Dividends.Status.RUNNING && (
+                    {dividend.status === Dividends.Status.RUNNING && (
                       <ButtonGroup>
                         <Button
                           type="primary"
@@ -202,6 +261,13 @@ const DividendHistory = () => {
                           onClick={() => updateDividendStatus(dividend, Dividends.Status.PAUSED)}
                         >
                           Pause
+                        </Button>
+                        <Button
+                          type="primary"
+                          icon="stop"
+                          onClick={() => updateDividendStatus(dividend, Dividends.Status.CANCELED)}
+                        >
+                          Cancel
                         </Button>
                       </ButtonGroup>
                     )}
@@ -214,8 +280,31 @@ const DividendHistory = () => {
                         >
                           Resume
                         </Button>
+                        <Button
+                          type="primary"
+                          icon="stop"
+                          onClick={() => updateDividendStatus(dividend, Dividends.Status.CANCELED)}
+                        >
+                          Cancel
+                        </Button>
                       </ButtonGroup>
                     )}
+                    {(dividend.status === Dividends.Status.CANCELED ||
+                      dividend.status === Dividends.Status.CRASHED) &&
+                      dividend.fanoutWallets &&
+                      dividend.fanoutWallets.length &&
+                      !dividend.fundsRecovered && (
+                        <ButtonGroup>
+                          <Button
+                            loading={recoveringFunds}
+                            type="primary"
+                            icon="rollback"
+                            onClick={() => recoverFunds(dividend)}
+                          >
+                            Recover funds
+                          </Button>
+                        </ButtonGroup>
+                      )}
                     <StyledDescriptions bordered column={1}>
                       <Descriptions.Item label="Receivers">
                         {dividend.receiverCount}
@@ -244,7 +333,7 @@ const DividendHistory = () => {
                         dividend.preparingTxs.map((tx, index) => (
                           <Descriptions.Item
                             key={tx}
-                            label={`Preparation transaction ${index + 1}`}
+                            label={`Preparation Transaction ${index + 1}`}
                           >
                             <a
                               href={`https://explorer.bitcoin.com/bch/tx/${tx}`}

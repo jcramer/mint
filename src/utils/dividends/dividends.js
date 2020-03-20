@@ -6,7 +6,8 @@ export default class Dividends {
     RUNNING: "RUNNING",
     PAUSED: "PAUSED",
     CANCELED: "CANCELED",
-    CRASHED: "CRASHED"
+    CRASHED: "CRASHED",
+    COMPLETED: "COMPLETED"
   };
 
   constructor({

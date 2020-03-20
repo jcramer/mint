@@ -7,7 +7,8 @@ export default class SlpDividends {
     RUNNING: "RUNNING",
     PAUSED: "PAUSED",
     CANCELED: "CANCELED",
-    CRASHED: "CRASHED"
+    CRASHED: "CRASHED",
+    COMPLETED: "COMPLETED"
   };
 
   static Errors = {
@@ -36,6 +37,9 @@ export default class SlpDividends {
     this.opReturn = opReturn;
     this.quantity = quantity;
     this.fanoutWallets = fanoutWallets;
+    this.fanoutFeePrepared = false;
+    this.fanoutTokensPrepared = false;
+    this.fundsRecovered = false;
     this.error = "";
   }
 

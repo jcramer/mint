@@ -7,9 +7,7 @@ export default class DividendsManager {
   static async update({ wallet, utxos }) {
     try {
       const dividends = Object.values(DividendsPayment.getAll());
-      const dividend = dividends.find(
-        dividend => dividend.progress < 1 && dividend.status === Dividends.Status.RUNNING
-      );
+      const dividend = dividends.find(dividend => dividend.status === Dividends.Status.RUNNING);
       if (dividend && utxos) {
         await DividendsManager.updateDividend({ wallet, dividend, utxos });
       }
@@ -39,17 +37,12 @@ export default class DividendsManager {
       dividend.progress = 1 - dividend.remainingReceivers.length / dividend.receiverCount;
       if (dividend.remainingQuantities.length === 0) {
         dividend.endDate = Date.now();
+        dividend.status = Dividends.Status.COMPLETED;
+      } else {
+        // avoid race conditions on status property
+        delete dividend.status;
       }
 
-      // avoid race conditions on status property
-      const oldDividend = Dividends.get(dividend);
-      if (
-        oldDividend &&
-        dividend.status === Dividends.Status.RUNNING &&
-        dividend.status !== oldDividend.status
-      ) {
-        dividend.status = oldDividend.status;
-      }
       Dividends.save(dividend);
     } catch (error) {
       if (
