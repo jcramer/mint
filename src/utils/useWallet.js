@@ -89,7 +89,7 @@ export const useWallet = () => {
       if (slpBalancesAndUtxos.slpUtxos) {
         await SlpDividendsManager.update({
           wallet,
-          utxos: [...slpBalancesAndUtxos.nonSlpUtxos, ...slpBalancesAndUtxos.slpUtxos]
+          slpBalancesAndUtxos
         });
       }
     },
