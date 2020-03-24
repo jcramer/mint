@@ -103,7 +103,6 @@ const DividendHistory = () => {
   const { balances, wallet } = React.useContext(WalletContext);
   const [dividends, setDividends] = useState(null);
   const [selected, setSelected] = useState(null);
-  const [recoveringFunds, setRecoveringFuds] = useState(false);
 
   useEffect(() => {
     const dividends = Object.values(Dividends.getAll());
@@ -145,25 +144,6 @@ const DividendHistory = () => {
     } else {
       SlpDividends.save(dividend);
     }
-  };
-
-  const recoverFunds = async slpDividend => {
-    setRecoveringFuds(true);
-    try {
-      await SlpDividendsManager.recoverFunds({ wallet, slpDividend });
-      slpDividend.fundsRecovered = true;
-      // SlpDividends.save(slpDividend);
-      // setSelected(slpDividend);
-      message.success("Funds successfully recovered!");
-    } catch (error) {
-      message.error(
-        error.friendlyMessage
-          ? error.friendlyMessage
-          : `Unable to recover the funds. Cause: ${error.error || error.messae}`
-      );
-      console.error(error.message);
-    }
-    setRecoveringFuds(false);
   };
 
   return (
@@ -241,6 +221,18 @@ const DividendHistory = () => {
                         closable={false}
                       />
                     )}
+                    {dividend.waitingBlockConfirmation && (
+                      <StyledAlert
+                        message={
+                          <>
+                            <Icon type="info-circle" />
+                            Waiting a block confirmation. It can take some minutes.
+                          </>
+                        }
+                        type="info"
+                        closable={false}
+                      />
+                    )}
                     {dividend.status === Dividends.Status.CRASHED && (
                       <StyledAlert
                         message={
@@ -289,22 +281,6 @@ const DividendHistory = () => {
                         </Button>
                       </ButtonGroup>
                     )}
-                    {(dividend.status === Dividends.Status.CANCELED ||
-                      dividend.status === Dividends.Status.CRASHED) &&
-                      dividend.fanoutWallets &&
-                      dividend.fanoutWallets.length &&
-                      !dividend.fundsRecovered && (
-                        <ButtonGroup>
-                          <Button
-                            loading={recoveringFunds}
-                            type="primary"
-                            icon="rollback"
-                            onClick={() => recoverFunds(dividend)}
-                          >
-                            Recover funds
-                          </Button>
-                        </ButtonGroup>
-                      )}
                     <StyledDescriptions bordered column={1}>
                       <Descriptions.Item label="Receivers">
                         {dividend.receiverCount}

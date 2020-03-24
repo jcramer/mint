@@ -118,6 +118,7 @@ export const getEligibleSlpDividendReceivers = withSLP(
           lastReceiverIndex: i,
           prepared: false,
           completed: false,
+          fundsRecovered: false,
           fee: fee.toFixed(8)
         });
       }

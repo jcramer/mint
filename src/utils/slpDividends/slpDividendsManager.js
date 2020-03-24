@@ -38,6 +38,18 @@ export default class SlpDividendsManager {
           slpDividend: runningSlpDividend
         });
       }
+      const crashedSlpDividendWithFunds = slpDividends.find(
+        slpDividend =>
+          (slpDividend.status === SlpDividends.Status.CRASHED ||
+            slpDividend.status === SlpDividends.Status.CANCELED) &&
+          !slpDividend.fundsRecovered
+      );
+      if (crashedSlpDividendWithFunds) {
+        return await SlpDividendsManager.recoverFunds({
+          wallet,
+          slpDividend: crashedSlpDividendWithFunds
+        });
+      }
     } catch (error) {
       console.error("Unable to update or prepare slpDividends due to: ", error.message);
     }
@@ -91,8 +103,9 @@ export default class SlpDividendsManager {
         if (slpDividend.fanoutWallets.every(w => w.prepared)) {
           slpDividend.fanoutTokensPrepared = true;
         }
-
+        slpDividend.waitingBlockConfirmation = true;
         SlpDividends.save(slpDividend);
+        return;
       }
 
       const bitboxNetwork = new slpjs.BitboxNetwork(SLP);
@@ -104,7 +117,7 @@ export default class SlpDividendsManager {
         addressChunks.map(addressChunk =>
           bitboxNetwork
             .getAllSlpBalancesAndUtxos(addressChunk)
-            .catch(() => addressChunk.map(el => null))
+            .catch(() => null)
             .then(balances => {
               if (balances) {
                 return balances.map(balance => [
@@ -119,6 +132,7 @@ export default class SlpDividendsManager {
 
       if (fanoutUtxos.every(utxo => utxo.confirmations > 0)) {
         slpDividend.status = SlpDividends.Status.RUNNING;
+        slpDividend.waitingBlockConfirmation = false;
         SlpDividends.save(slpDividend);
       }
     } catch (error) {
@@ -203,7 +217,7 @@ export default class SlpDividendsManager {
       addressChunks.map(addressChunk =>
         bitboxNetwork
           .getAllSlpBalancesAndUtxos(addressChunk)
-          .catch(() => addressChunk.map(el => null))
+          .catch(() => null)
           .then(balances => {
             if (balances) {
               return balances.map(balance => [
@@ -253,11 +267,13 @@ export default class SlpDividendsManager {
             slpDividend.txs.push(sendTxid);
             if (lastBatch) {
               fanoutWallet.completed = true;
+              fanoutWallet.fundsRecovered = true;
             }
 
             if (slpDividend.fanoutWallets.every(w => w.completed)) {
               slpDividend.endDate = Date.now();
               slpDividend.status = SlpDividends.Status.COMPLETED;
+              slpDividend.fundsRecovered = true;
             }
 
             SlpDividends.save(slpDividend);
@@ -282,7 +298,7 @@ export default class SlpDividendsManager {
       addressChunks.map(addressChunk =>
         bitboxNetwork
           .getAllSlpBalancesAndUtxos(addressChunk)
-          .catch(() => addressChunk.map(el => null))
+          .catch(() => null)
           .then(balances => {
             if (balances) {
               return balances.map(balance => [
@@ -295,29 +311,58 @@ export default class SlpDividendsManager {
       )
     ))
       .reduce((p, c, i) => p.concat(...c), [])
-      .map(utxo => ({
-        ...utxo,
-        wif: fanoutWallets.find(w => w.cashAddress === utxo.cashAddress).wif
-      }));
+      .map(utxo => {
+        const wallet = fanoutWallets.find(w => w.cashAddress === utxo.cashAddress);
+
+        return {
+          ...utxo,
+          wallet,
+          wif: wallet.wif
+        };
+      });
 
     const tokenUtxos = fanoutUtxos.filter(utxo => utxo.slpUtxoJudgement === "SLP_TOKEN");
     const { Path245, Path145 } = wallet;
     const bchChangeReceiverAddress = Path145.slpAddress;
     const tokenReceiverAddress = Path245.slpAddress;
 
-    if (tokenUtxos.length) {
-      const sendAmounts = tokenUtxos.reduce(
-        (p, utxo) => p.plus(new BigNumber(utxo.slpUtxoJudgementAmount)),
-        new BigNumber(0)
-      );
+    for (let i = 0; i < tokenUtxos.length; i += SlpDividends.BATCH_SIZE) {
+      try {
+        const tokenUtxosBatch = tokenUtxos.slice(i, i + SlpDividends.BATCH_SIZE);
+        const nonSlpUtxosBatch = fanoutUtxos.filter(utxo =>
+          tokenUtxosBatch.some(
+            tokenUtxo =>
+              tokenUtxo.cashAddress === utxo.cashAddress && utxo.slpUtxoJudgement !== "SLP_TOKEN"
+          )
+        );
+        const sendAmounts = tokenUtxosBatch.reduce(
+          (p, utxo) => p.plus(new BigNumber(utxo.slpUtxoJudgementAmount)),
+          new BigNumber(0)
+        );
 
-      await bitboxNetwork.simpleTokenSend(
-        slpDividend.sendingToken.tokenId,
-        sendAmounts,
-        fanoutUtxos,
-        tokenReceiverAddress,
-        bchChangeReceiverAddress
-      );
+        await bitboxNetwork.simpleTokenSend(
+          slpDividend.sendingToken.tokenId,
+          sendAmounts,
+          [...tokenUtxosBatch, ...nonSlpUtxosBatch],
+          tokenReceiverAddress,
+          bchChangeReceiverAddress
+        );
+
+        tokenUtxosBatch.forEach(utxo => {
+          utxo.wallet.fundsRecovered = true;
+        });
+      } catch (error) {
+        console.error(
+          "Unable to recover funds of one fanout wallet due to: ",
+          error.message || error
+        );
+      }
     }
+
+    if (fanoutWallets.every(w => w.fundsRecovered)) {
+      slpDividend.fundsRecovered = true;
+    }
+
+    SlpDividends.save(slpDividend);
   });
 }

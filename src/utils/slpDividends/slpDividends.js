@@ -39,6 +39,7 @@ export default class SlpDividends {
     this.fanoutWallets = fanoutWallets;
     this.fanoutFeePrepared = false;
     this.fanoutTokensPrepared = false;
+    this.waitingBlockConfirmation = false;
     this.fundsRecovered = false;
     this.error = "";
   }
