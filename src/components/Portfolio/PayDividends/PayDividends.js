@@ -29,6 +29,7 @@ import { useHistory } from "react-router";
 import { DUST } from "../../../utils/sendBch";
 import { createSlpDividends } from "../../../utils/slpDividends/createSlpDividends";
 import SlpDividends from "../../../utils/slpDividends/slpDividends";
+import { SLP_TOKEN_ICONS_URL } from "../Portfolio";
 
 const StyledPayDividends = styled.div`
   * {
@@ -81,13 +82,32 @@ export const StyledButtonWrapper = styled.div`
 
 export const StyledSwitchWrapper = styled.div`
   display: flex;
+  justify-content: center;
+  margin-top: 20px;
 
   * {
     background-color: rgb(223, 223, 223) !important;
   }
 `;
 
-const SLP_TOKEN_ICONS_URL = "https://tokens.bch.sx/64";
+export const StyledSelectWrapper = styled.div`
+  .ant-select-selection {
+    display: flex;
+    align-items: center;
+    height: 42px;
+  }
+  .ant-select-selection__placeholder,
+  .ant-select-search__field__placeholder {
+    overflow: unset;
+  }
+  position: relative;
+  margin-bottom: 24px;
+`;
+
+export const StyledIconOnSelect = styled.div`
+  display: inline-block;
+  margin-right: 10px;
+`;
 
 export const Types = {
   BCH: 0,
@@ -444,16 +464,37 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
                           />
                         ) : (
                           <>
-                            <Select
-                              placeholder="Select the sending token"
-                              onChange={value =>
-                                setSendingToken(tokens.find(t => t.tokenId === value))
-                              }
-                            >
-                              {tokensAvaibleForAirdrop.map(t => (
-                                <Select.Option value={t.tokenId}>{t.info.name}</Select.Option>
-                              ))}
-                            </Select>
+                            <StyledSelectWrapper>
+                              <Select
+                                placeholder="Select the sending token"
+                                onChange={value =>
+                                  setSendingToken(tokens.find(t => t.tokenId === value))
+                                }
+                              >
+                                {tokensAvaibleForAirdrop.map(t => (
+                                  <Select.Option value={t.tokenId}>
+                                    <StyledIconOnSelect>
+                                      <Img
+                                        height={16}
+                                        width={16}
+                                        src={`${SLP_TOKEN_ICONS_URL}/${t.tokenId}.png`}
+                                        unloader={
+                                          <img
+                                            alt=""
+                                            height={16}
+                                            width={16}
+                                            style={{ borderRadius: "50%" }}
+                                            src={makeBlockie(t.tokenId)}
+                                          />
+                                        }
+                                      />
+                                    </StyledIconOnSelect>
+
+                                    {t.info.name}
+                                  </Select.Option>
+                                ))}
+                              </Select>
+                            </StyledSelectWrapper>
                             {sendingToken && (
                               <FormItemWithMaxAddon
                                 onMax={onMaxSendingToken}
@@ -471,8 +512,8 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
                         )}
                         <StyledSwitchWrapper>
                           <Switch
-                            checkedChildren="BCH"
-                            unCheckedChildren="SLP"
+                            checkedChildren="Bitcoin Cash"
+                            unCheckedChildren="SLP Tokens"
                             defaultChecked
                             onChange={checked => {
                               setType(checked ? Types.BCH : Types.SLP);
