@@ -17,6 +17,7 @@ import logo from "../assets/logo.png";
 import { Route, Redirect, Link, Switch, useLocation, useHistory } from "react-router-dom";
 import { QRCode } from "./Common/QRCode";
 import DividendHistory from "./DividendHistory/DividendHistory";
+import PostOffice from "./PostOffice/PostOffice";
 
 const { Header, Content, Sider, Footer } = Layout;
 const { TabPane } = Tabs;
@@ -229,6 +230,13 @@ const App = () => {
                     </Menu.Item>
                   </Menu.SubMenu>
                 )}
+                {wallet && (
+                  <Menu.SubMenu key="post-office" title={<span>Post office</span>}>
+                    <Menu.Item key="post-office-send-tokens">
+                      <Link to="/post-office/send-tokens">Send tokens</Link>
+                    </Menu.Item>
+                  </Menu.SubMenu>
+                )}
                 <Menu.Item key="configure">
                   <Link to="/configure">Configure</Link>
                 </Menu.Item>
@@ -375,6 +383,9 @@ const App = () => {
                 </Route>
                 <Route path="/dividends-history">
                   <DividendHistory />
+                </Route>
+                <Route path="/post-office">
+                  <PostOffice />
                 </Route>
                 <Redirect exact from="/" to="/portfolio" />
                 <Route component={NotFound} />

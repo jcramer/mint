@@ -18,6 +18,7 @@
     "badger-components-react": "^0.6.0",
     "big.js": "^5.2.2",
     "bignumber.js": "^9.0.0",
+    "bitcore-payment-protocol": "git+https://github.com/vinarmani/bitcore-payment-protocol.git#new_deps",
     "browser-image-compression": "^1.0.8",
     "camelcase": "^5.2.0",
     "case-sensitive-paths-webpack-plugin": "2.2.0",
