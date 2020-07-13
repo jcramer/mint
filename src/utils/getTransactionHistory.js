@@ -56,7 +56,7 @@ const decodeBchDividensMetaData = metaData => {
 
 const getTransactionHistory = async (SLP, cashAddresses, transactions, tokens) => {
   try {
-    const calculateTransactionBalance = vout => {
+    const calculateTransactionBalance = (vout, vin) => {
       const isDividends = isBchDividens(vout);
       if (isDividends) {
         if (
@@ -66,11 +66,14 @@ const getTransactionHistory = async (SLP, cashAddresses, transactions, tokens) =
           )
         ) {
           return {
-            balance:
+            balance: (
               vout
                 .slice(1, vout.length - 1)
-                .map(element => +element.value)
-                .reduce((a, b) => a + b, 0) * -1,
+                .map(element => +element.value * Math.pow(10, 8))
+                .reduce((a, b) => a + b, 0) *
+              Math.pow(10, -8) *
+              -1
+            ).toFixed(8),
             type: "MintDividend Sent",
             outputs: vout.slice(1, vout.length - 1).map(element => ({
               address: SLP.Address.toCashAddress(element.scriptPubKey.addresses[0]),
@@ -90,13 +93,17 @@ const getTransactionHistory = async (SLP, cashAddresses, transactions, tokens) =
             ) !== -1
         ) {
           return {
-            balance: vout
-              .slice(1, vout.length - 1)
-              .filter(element =>
-                cashAddresses.includes(SLP.Address.toCashAddress(element.scriptPubKey.addresses[0]))
-              )
-              .map(el => +el.value)
-              .reduce((a, b) => a + b, 0),
+            balance: (
+              vout
+                .slice(1, vout.length - 1)
+                .filter(element =>
+                  cashAddresses.includes(
+                    SLP.Address.toCashAddress(element.scriptPubKey.addresses[0])
+                  )
+                )
+                .map(el => +el.value * Math.pow(10, 8))
+                .reduce((a, b) => a + b, 0) * Math.pow(10, -8)
+            ).toFixed(8),
             type: "MintDividend Received",
             outputs: vout
               .slice(1, vout.length - 1)
@@ -120,11 +127,14 @@ const getTransactionHistory = async (SLP, cashAddresses, transactions, tokens) =
             ) === -1
         ) {
           return {
-            balance:
+            balance: (
               vout
                 .slice(1, vout.length)
-                .map(el => +el.value)
-                .reduce((a, b) => a + b, 0) * -1,
+                .map(el => +el.value * Math.pow(10, 8))
+                .reduce((a, b) => a + b, 0) *
+              Math.pow(10, -8) *
+              -1
+            ).toFixed(8),
             type: "MintDividend Sent",
             outputs: vout.slice(1, vout.length).map(el => ({
               address: SLP.Address.toCashAddress(el.scriptPubKey.addresses[0]),
@@ -139,6 +149,31 @@ const getTransactionHistory = async (SLP, cashAddresses, transactions, tokens) =
           type: "Unknown"
         };
       } else if (!hasOpReturn(vout)) {
+        if (
+          vout.length === 1 &&
+          cashAddresses.includes(SLP.Address.toCashAddress(vout[0].scriptPubKey.addresses[0])) &&
+          ((vin[0].addr &&
+            vin.findIndex(
+              input => !cashAddresses.includes(SLP.Address.toCashAddress(input.addr))
+            ) === -1) ||
+            (vin[0].legacyAddress &&
+              vin.findIndex(
+                input => !cashAddresses.includes(SLP.Address.toCashAddress(input.legacyAddress))
+              ) === -1))
+        ) {
+          const previousBalance = vin
+            .map(input => +(vin[0].valueSat ? input.valueSat : input.value))
+            .filter(el => el > 546)
+            .reduce((a, b) => +a + +b, 0);
+
+          return {
+            balance: (
+              (+vout[0].value * Math.pow(10, 8) - previousBalance) *
+              Math.pow(10, -8)
+            ).toFixed(8),
+            type: "Change Received"
+          };
+        }
         if (
           vout.length === 1 &&
           cashAddresses.includes(SLP.Address.toCashAddress(vout[0].scriptPubKey.addresses[0]))
@@ -160,11 +195,14 @@ const getTransactionHistory = async (SLP, cashAddresses, transactions, tokens) =
           )
         ) {
           return {
-            balance:
+            balance: (
               vout
                 .slice(0, vout.length - 1)
-                .map(element => +element.value)
-                .reduce((a, b) => a + b, 0) * -1,
+                .map(element => +element.value * Math.pow(10, 8))
+                .reduce((a, b) => a + b, 0) *
+              Math.pow(10, -8) *
+              -1
+            ).toFixed(8),
             type: "Sent"
           };
         }
@@ -178,13 +216,17 @@ const getTransactionHistory = async (SLP, cashAddresses, transactions, tokens) =
             ) !== -1
         ) {
           return {
-            balance: vout
-              .slice(0, vout.length - 1)
-              .filter(element =>
-                cashAddresses.includes(SLP.Address.toCashAddress(element.scriptPubKey.addresses[0]))
-              )
-              .map(el => +el.value)
-              .reduce((a, b) => a + b, 0),
+            balance: (
+              vout
+                .slice(0, vout.length - 1)
+                .filter(element =>
+                  cashAddresses.includes(
+                    SLP.Address.toCashAddress(element.scriptPubKey.addresses[0])
+                  )
+                )
+                .map(el => +el.value * Math.pow(10, 8))
+                .reduce((a, b) => a + b, 0) * Math.pow(10, -8)
+            ).toFixed(8),
             type: "Received"
           };
         }
@@ -196,7 +238,11 @@ const getTransactionHistory = async (SLP, cashAddresses, transactions, tokens) =
           ) === -1
         ) {
           return {
-            balance: vout.map(element => +element.value).reduce((a, b) => a + b, 0) * -1,
+            balance: (
+              vout.map(element => +element.value * Math.pow(10, 8)).reduce((a, b) => a + b, 0) *
+              Math.pow(10, -8) *
+              -1
+            ).toFixed(8),
             type: "Sent"
           };
         }
@@ -232,7 +278,7 @@ const getTransactionHistory = async (SLP, cashAddresses, transactions, tokens) =
         txid: el.txid,
         date: new Date(),
         confirmations: el.confirmations,
-        transactionBalance: calculateTransactionBalance(el.vout)
+        transactionBalance: calculateTransactionBalance(el.vout, el.vin)
       }));
 
     const unconfirmedBchTxids = transactionHistory.unconfirmed.map(tx => tx.txid);
@@ -284,7 +330,7 @@ const getTransactionHistory = async (SLP, cashAddresses, transactions, tokens) =
           txid: el.txid,
           date: new Date(el.time * 1000),
           confirmations: el.confirmations,
-          transactionBalance: calculateTransactionBalance(el.vout)
+          transactionBalance: calculateTransactionBalance(el.vout, el.vin)
         }))
         .slice(0, 30 - transactionHistory.unconfirmed.length);
     }

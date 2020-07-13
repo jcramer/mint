@@ -1,9 +1,14 @@
 # Changelog - Bitcoin.com Mint
 
+## Apr 29, 2020
+
+- Add icons with token creation
+
 ## Fev 18, 2020
+
 - [#61:](https://github.com/Bitcoin-com/mint/pull/61) Production Release
 - [#62:](https://github.com/Bitcoin-com/mint/pull/62) Fix/delay lock on dividends page
-- [#60:](https://github.com/Bitcoin-com/mint/pull/60) [feat] fixed_supply_tokens 
+- [#60:](https://github.com/Bitcoin-com/mint/pull/60) [feat] fixed_supply_tokens
 - [#59:](https://github.com/Bitcoin-com/mint/pull/59) Fix/side bar scroll and audit menu item
 - [#57:](https://github.com/Bitcoin-com/mint/pull/57) [hotfix] Default error message when slp-sdk throws an unhandled exception
 - [#56:](https://github.com/Bitcoin-com/mint/pull/56) [fix] Fix dividends scroll

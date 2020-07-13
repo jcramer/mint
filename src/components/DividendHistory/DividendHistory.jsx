@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Img from "react-image";
 import makeBlockie from "ethereum-blockies-base64";
 import { WalletContext } from "../../utils/context";
-import { Icon, Row, Col, Empty, Progress, Descriptions, Button, Alert, Spin, message } from "antd";
+import { Icon, Row, Col, Empty, Progress, Descriptions, Button, Alert, Spin } from "antd";
 import styled, { createGlobalStyle } from "styled-components";
 import moment from "moment";
 import { useEffect } from "react";
@@ -13,7 +13,6 @@ import bchFlagLogo from "../../assets/4-bitcoin-cash-logo-flag.png";
 import { getEncodedOpReturnMessage } from "../../utils/dividends/createDividends";
 import ButtonGroup from "antd/lib/button/button-group";
 import SlpDividends from "../../utils/slpDividends/slpDividends";
-import SlpDividendsManager from "../../utils/slpDividends/slpDividendsManager";
 
 const StyledCol = styled(Col)`
   margin-top: 8px;
@@ -100,7 +99,7 @@ const StyledAlert = styled(Alert)`
 `;
 
 const DividendHistory = () => {
-  const { balances, wallet } = React.useContext(WalletContext);
+  const { balances } = React.useContext(WalletContext);
   const [dividends, setDividends] = useState(null);
   const [selected, setSelected] = useState(null);
 

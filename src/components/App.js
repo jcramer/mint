@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { useSwipeable } from "react-swipeable";
 import { Layout, Menu, Radio, Tabs, Icon } from "antd";
 import Portfolio from "./Portfolio/Portfolio";
+import Icons from "./Icons/Icons";
 import Create from "./Create/Create";
 import Dividends from "./Dividends/Dividends";
 import Configure from "./Configure/Configure";
@@ -82,6 +83,8 @@ const App = () => {
   const [collapsed, setCollapsed] = React.useState(window.innerWidth < 768);
   const [mobile, setMobile] = React.useState(false);
   const [address, setAddress] = React.useState("slpAddress");
+  const [pixelRatio, setPixelRatio] = React.useState(1);
+
   const ContextValue = React.useContext(WalletContext);
   const { wallet } = ContextValue;
   const radio = React.useRef(null);
@@ -103,18 +106,23 @@ const App = () => {
     setAddress(address === "cashAddress" ? "slpAddress" : "cashAddress");
   };
 
-  const handleResize = () => setMobile(window.innerWidth < 768);
+  const handleResize = () => {
+    setMobile(window.innerWidth < 768);
+    setPixelRatio(window.devicePixelRatio);
+  };
 
   const handleClickTrigger = e => (document.body.style.overflow = "hidden");
 
   React.useEffect(() => {
-    if (mobile) {
+    if (mobile && pixelRatio === 1) {
       const triggerElement = document.getElementsByTagName("aside")[0].children[1];
 
       triggerElement.addEventListener("click", handleClickTrigger);
 
       return () => triggerElement.removeEventListener("click", handleClickTrigger);
     }
+
+    // eslint-disable-next-line
   }, [mobile]);
 
   React.useEffect(() => {
@@ -208,6 +216,9 @@ const App = () => {
                     <Link to="/create">Create</Link>
                   </Menu.Item>
                 )}
+                <Menu.Item key="icons">
+                  <Link to="/icons">Icons</Link>
+                </Menu.Item>
                 {wallet && (
                   <Menu.SubMenu key="dividends" title={<span>Dividends</span>}>
                     <Menu.Item key="pay-dividends">
@@ -225,6 +236,12 @@ const App = () => {
                   <Link to="/audit">Audit</Link>
                 </Menu.Item>
                 <Menu.SubMenu key="links" title={<span>Links</span>}>
+                  <Menu.Item key="link-trade-locally">
+                    {" "}
+                    <a href="https://send.bitcoin.com" target="_blank" rel="noopener noreferrer">
+                      Send BCH by Email
+                    </a>
+                  </Menu.Item>
                   <Menu.Item key="link-faucet">
                     <a href="https://free.bitcoin.com/" target="_blank" rel="noopener noreferrer">
                       Faucet (Free BCH)
@@ -269,6 +286,7 @@ const App = () => {
                     <div>
                       <QRCode
                         id="borderedQRCode"
+                        pixelRatio={pixelRatio}
                         address={
                           address === "slpAddress"
                             ? wallet.Path245.slpAddress
@@ -342,6 +360,9 @@ const App = () => {
                 </Route>
                 <Route path="/create">
                   <Create />
+                </Route>
+                <Route path="/icons">
+                  <Icons />
                 </Route>
                 <Route path="/configure">
                   <Configure />

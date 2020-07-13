@@ -115,9 +115,11 @@ const SendBCH = ({ onClose, outerAction }) => {
       );
       await fetch("https://markets.api.bitcoin.com/live/bitcoin")
         .then(response => {
+          console.log("response :", response);
           return response.json();
         })
         .then(myJson => {
+          console.log("myJson.data.BCH :", myJson.data.BCH);
           setBchToDollar(myJson.data.BCH);
         });
       setHistory(resp);
@@ -285,11 +287,11 @@ const SendBCH = ({ onClose, outerAction }) => {
                               el.transactionBalance.balance
                             } BCH`}</p>
                             <p>{`${el.transactionBalance.balance > 0 ? "+$" : "-$"}${
-                              (Math.abs(el.transactionBalance.balance) / bchToDollar)
+                              (Math.abs(el.transactionBalance.balance) * bchToDollar)
                                 .toFixed(2)
                                 .toString() === "0.00"
                                 ? 0.01
-                                : (Math.abs(el.transactionBalance.balance) / bchToDollar).toFixed(2)
+                                : (Math.abs(el.transactionBalance.balance) * bchToDollar).toFixed(2)
                             } USD`}</p>
                             {el.transactionBalance.type.includes("MintDividend") && (
                               <>

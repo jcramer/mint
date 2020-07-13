@@ -8,9 +8,11 @@ import sendToken from "../../../utils/broadcastTransaction";
 import { PlaneIcon } from "../../Common/CustomIcons";
 import { FormItemWithMaxAddon, FormItemWithQRCodeAddon } from "../EnhancedInputs";
 import { getRestUrl } from "../../../utils/withSLP";
+import { StyledButtonWrapper } from "../PayDividends/PayDividends";
+import { QRCode } from "../../Common/QRCode";
 
 const Transfer = ({ token, onClose }) => {
-  const { wallet } = React.useContext(WalletContext);
+  const { wallet, balances } = React.useContext(WalletContext);
   const [formData, setFormData] = useState({
     dirty: false,
     quantity: "",
@@ -57,6 +59,8 @@ const Transfer = ({ token, onClose }) => {
         message = e.message;
       } else if (/has no matching Script/.test(e.message)) {
         message = "Invalid address";
+      } else if (/Transaction input BCH amount is too low/.test(e.message)) {
+        message = "Not enough BCH. Deposit some funds to use this feature.";
       } else if (!e.error) {
         message = `Transaction failed: no response from ${getRestUrl()}.`;
       } else if (/Could not communicate with full node or other external service/.test(e.error)) {
@@ -98,48 +102,68 @@ const Transfer = ({ token, onClose }) => {
             bordered={false}
           >
             <br />
-            <Row type="flex">
-              <Col span={24}>
-                <Form style={{ width: "auto" }}>
-                  <FormItemWithQRCodeAddon
-                    validateStatus={formData.dirty && !formData.address ? "error" : ""}
-                    help={
-                      formData.dirty && !formData.address ? "Should be a valid slp address" : ""
-                    }
-                    onScan={result => setFormData({ ...formData, address: result })}
-                    inputProps={{
-                      placeholder: "SLP Address",
-                      name: "address",
-                      onChange: e => handleChange(e),
-                      required: true,
-                      value: formData.address
-                    }}
-                  />
+            {!balances.totalBalance ? (
+              <Row justify="center" type="flex">
+                <Col>
+                  <br />
+                  <StyledButtonWrapper>
+                    <>
+                      <Paragraph>
+                        You currently have 0 BCH. Deposit some funds to use this feature.
+                      </Paragraph>
+                      <Paragraph>
+                        <QRCode id="borderedQRCode" address={wallet.Path145.cashAddress} />
+                      </Paragraph>
+                    </>
+                  </StyledButtonWrapper>
+                </Col>
+              </Row>
+            ) : (
+              <Row type="flex">
+                <Col span={24}>
+                  <Form style={{ width: "auto" }}>
+                    <FormItemWithQRCodeAddon
+                      validateStatus={formData.dirty && !formData.address ? "error" : ""}
+                      help={
+                        formData.dirty && !formData.address ? "Should be a valid slp address" : ""
+                      }
+                      onScan={result => setFormData({ ...formData, address: result })}
+                      inputProps={{
+                        placeholder: "SLP Address",
+                        name: "address",
+                        onChange: e => handleChange(e),
+                        required: true,
+                        value: formData.address
+                      }}
+                    />
 
-                  <FormItemWithMaxAddon
-                    validateStatus={formData.dirty && Number(formData.quantity) <= 0 ? "error" : ""}
-                    help={
-                      formData.dirty && Number(formData.quantity) <= 0
-                        ? "Should be greater than 0"
-                        : ""
-                    }
-                    onMax={onMax}
-                    inputProps={{
-                      prefix: <Icon type="block" />,
-                      placeholder: "Amount",
-                      name: "quantity",
-                      onChange: e => handleChange(e),
-                      required: true,
-                      type: "number",
-                      value: formData.quantity
-                    }}
-                  />
-                  <div style={{ paddingTop: "12px" }}>
-                    <Button onClick={() => submit()}>Send</Button>
-                  </div>
-                </Form>
-              </Col>
-            </Row>
+                    <FormItemWithMaxAddon
+                      validateStatus={
+                        formData.dirty && Number(formData.quantity) <= 0 ? "error" : ""
+                      }
+                      help={
+                        formData.dirty && Number(formData.quantity) <= 0
+                          ? "Should be greater than 0"
+                          : ""
+                      }
+                      onMax={onMax}
+                      inputProps={{
+                        prefix: <Icon type="block" />,
+                        placeholder: "Amount",
+                        name: "quantity",
+                        onChange: e => handleChange(e),
+                        required: true,
+                        type: "number",
+                        value: formData.quantity
+                      }}
+                    />
+                    <div style={{ paddingTop: "12px" }}>
+                      <Button onClick={() => submit()}>Send</Button>
+                    </div>
+                  </Form>
+                </Col>
+              </Row>
+            )}
           </Card>
         </Spin>
       </Col>

@@ -39,13 +39,7 @@ aside::-webkit-scrollbar-thumb {
   display: flex;
 }
 
-#borderedQRCode {
-  border: 20px solid #fff;
-  border-radius: 8px;
-}
-
 #react-qrcode-logo {
-  border: 10px solid #fff;
   border-radius: 8px;
 }
 .App-header {
@@ -253,10 +247,6 @@ input.ant-input {
 .ant-btn-group .ant-btn-primary:last-child:not(:first-child),
 .ant-btn-group .ant-btn-primary + .ant-btn-primary {
   border-left-color: #20242d !important;
-}
-
-#borderedQRCode {
-  border: 5px solid #fff;
 }
 
 .audit {

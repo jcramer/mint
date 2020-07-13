@@ -9,6 +9,7 @@ import Paragraph from "antd/lib/typography/Paragraph";
 import { HammerIcon } from "../../Common/CustomIcons";
 import { FormItemWithQRCodeAddon } from "../EnhancedInputs";
 import { getRestUrl } from "../../../utils/withSLP";
+import { QRCode } from "../../Common/QRCode";
 
 const StyledButtonWrapper = styled.div`
   display: flex;
@@ -72,6 +73,8 @@ const Mint = ({ token, onClose }) => {
         message = e.message;
       } else if (/Invalid BCH address/.test(e.message)) {
         message = "Invalid BCH address";
+      } else if (/Transaction input BCH amount is too low/.test(e.message)) {
+        message = "Not enough BCH. Deposit some funds to use this feature.";
       } else if (!e.error) {
         message = `Transaction failed: no response from ${getRestUrl()}.`;
       } else if (/Could not communicate with full node or other external service/.test(e.error)) {
@@ -109,73 +112,66 @@ const Mint = ({ token, onClose }) => {
             bordered={false}
           >
             <br />
-            <Row justify="center" type="flex">
-              <Col>
-                <StyledButtonWrapper>
-                  {!balances.totalBalance ? (
+            {!balances.totalBalance ? (
+              <Row justify="center" type="flex">
+                <Col>
+                  <br />
+                  <StyledButtonWrapper>
                     <>
-                      <br />
                       <Paragraph>
-                        <ButtonQR
-                          toAddress={wallet.Path145.cashAddress}
-                          sizeQR={125}
-                          step={"fresh"}
-                          amountSatoshis={0}
-                        />
+                        You currently have 0 BCH. Deposit some funds to use this feature.
                       </Paragraph>
-                      <Paragraph style={{ overflowWrap: "break-word" }} copyable>
-                        {wallet.Path145.cashAddress}
-                      </Paragraph>
-                      <Paragraph>You currently have 0 BCH.</Paragraph>
                       <Paragraph>
-                        Deposit some BCH in order to pay for the transaction that will mint the
-                        token
+                        <QRCode id="borderedQRCode" address={wallet.Path145.cashAddress} />
                       </Paragraph>
                     </>
-                  ) : null}
-                </StyledButtonWrapper>
-              </Col>
-            </Row>
-            <Row type="flex">
-              <Col span={24}>
-                <Form style={{ width: "auto" }}>
-                  <FormItemWithQRCodeAddon
-                    validateStatus={!formData.dirty && !formData.baton ? "error" : ""}
-                    help={!formData.dirty && !formData.baton ? "Should be a valid slp address" : ""}
-                    onScan={result => setFormData({ ...formData, address: result })}
-                    inputProps={{
-                      placeholder: "Baton (slp address)",
-                      name: "baton",
-                      onChange: e => handleChange(e),
-                      required: true,
-                      value: formData.baton
-                    }}
-                  />
-                  <Form.Item
-                    validateStatus={
-                      !formData.dirty && Number(formData.quantity) <= 0 ? "error" : ""
-                    }
-                    help={
-                      !formData.dirty && Number(formData.quantity) <= 0
-                        ? "Should be greater than 0"
-                        : ""
-                    }
-                  >
-                    <Input
-                      prefix={<Icon type="block" />}
-                      placeholder="Amount"
-                      name="quantity"
-                      onChange={e => handleChange(e)}
-                      required
-                      type="number"
+                  </StyledButtonWrapper>
+                </Col>
+              </Row>
+            ) : (
+              <Row type="flex">
+                <Col span={24}>
+                  <Form style={{ width: "auto" }}>
+                    <FormItemWithQRCodeAddon
+                      validateStatus={!formData.dirty && !formData.baton ? "error" : ""}
+                      help={
+                        !formData.dirty && !formData.baton ? "Should be a valid slp address" : ""
+                      }
+                      onScan={result => setFormData({ ...formData, address: result })}
+                      inputProps={{
+                        placeholder: "Baton (slp address)",
+                        name: "baton",
+                        onChange: e => handleChange(e),
+                        required: true,
+                        value: formData.baton
+                      }}
                     />
-                  </Form.Item>
-                  <div style={{ paddingTop: "12px" }}>
-                    <Button onClick={() => submit()}>Mint</Button>
-                  </div>
-                </Form>
-              </Col>
-            </Row>
+                    <Form.Item
+                      validateStatus={
+                        !formData.dirty && Number(formData.quantity) <= 0 ? "error" : ""
+                      }
+                      help={
+                        !formData.dirty && Number(formData.quantity) <= 0
+                          ? "Should be greater than 0"
+                          : ""
+                      }
+                    >
+                      <Input
+                        prefix={<Icon type="block" />}
+                        placeholder="Amount"
+                        name="quantity"
+                        onChange={e => handleChange(e)}
+                        required
+                        type="number"
+                      />
+                    </Form.Item>
+                    <div style={{ paddingTop: "12px" }}>
+                      <Button onClick={() => submit()}>Mint</Button>
+                    </div>
+                  </Form>
+                </Col>
+              </Row>
+            )}
           </Card>
         </Spin>
       </Col>

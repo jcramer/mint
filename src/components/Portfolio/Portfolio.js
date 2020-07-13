@@ -30,6 +30,7 @@ import getTokenTransactionHistory from "../../utils/getTokenTransactionHistory";
 import bchFlagLogo from "../../assets/4-bitcoin-cash-logo-flag.png";
 
 export const SLP_TOKEN_ICONS_URL = "https://tokens.bch.sx/64";
+export const BITCOIN_DOT_COM_ICONS_URL = "https://tokens.bitcoin.com/64";
 
 export const StyledCollapse = styled(Collapse)`
   background: #fbfcfd !important;
@@ -64,7 +65,7 @@ const StyledSwitch = styled(Col)`
 
 export default () => {
   const ContextValue = React.useContext(WalletContext);
-  const { wallet, tokens, loading, balances } = ContextValue;
+  const { wallet, tokens, loading, balances, slpBalancesAndUtxos } = ContextValue;
   const [selectedToken, setSelectedToken] = useState(null);
   const [action, setAction] = useState(null);
 
@@ -73,6 +74,28 @@ export default () => {
   const [history, setHistory] = useState(null);
   const [outerAction, setOuterAction] = useState(false);
   const [showArchivedTokens, setShowArchivedTokens] = useState(false);
+
+  const getImgs = doc => {
+    return Array.from(doc.images)
+      .filter(
+        img => img.currentSrc.includes("tokens.bch.sx") || img.currentSrc.includes("https://icons.")
+      )
+      .map(
+        img =>
+          img.currentSrc
+            .split("/")
+            .slice()
+            .reverse()[0]
+            .split(".")[0]
+      );
+  };
+
+  React.useEffect(() => {
+    const tokenIconIds = getImgs(document);
+    if (tokenIconIds.length) {
+      tokenIconIds.map(id => window.localStorage.removeItem(id));
+    }
+  }, [tokens]);
 
   const isModalOpen = (action, selectedToken) => action === "sendBCH" || selectedToken !== null;
 
@@ -84,7 +107,11 @@ export default () => {
   const getTokenHistory = async tokenInfo => {
     setLoadingTokenHistory(true);
     try {
-      const resp = await getTokenTransactionHistory(wallet.slpAddresses, tokenInfo);
+      const resp = await getTokenTransactionHistory(
+        wallet.slpAddresses,
+        tokenInfo,
+        slpBalancesAndUtxos.slpUtxos.filter(utxo => utxo.slpData.tokenId === tokenInfo.tokenId)
+      );
       setHistory(resp);
     } catch (err) {
       const message = err.message || err.error || JSON.stringify(err);
@@ -383,7 +410,14 @@ export default () => {
                             <div
                               key={`history-${el.txid}`}
                               style={{
-                                background: el.balance > 0 ? "#D4EFFC" : " #ffd59a",
+                                background:
+                                  el.balance > 0
+                                    ? el.detail.transactionType === "BURN"
+                                      ? "#FDF1F0"
+                                      : "#D4EFFC"
+                                    : el.detail.transactionType.includes("BURN")
+                                    ? "#FDF1F0"
+                                    : "#ffd59a",
                                 color: "black",
                                 borderRadius: "12px",
                                 marginBottom: "18px",
@@ -392,35 +426,60 @@ export default () => {
                                 width: "97%"
                               }}
                             >
-                              <a
-                                href={`https://explorer.bitcoin.com/bch/tx/${el.txid}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <p>
-                                  {el.balance > 0
-                                    ? el.detail.transactionType === "GENESIS"
-                                      ? "Genesis"
-                                      : el.detail.transactionType === "MINT"
-                                      ? "Mint"
-                                      : "Received"
-                                    : "Sent"}
-                                </p>
-                                <p>{el.date.toLocaleString()}</p>
-
-                                <p>{`${el.balance > 0 ? "+" : ""}${el.balance} ${
-                                  el.detail.symbol
-                                }`}</p>
-
-                                <Paragraph
-                                  small
-                                  ellipsis
-                                  style={{ whiteSpace: "nowrap", color: "black", maxWidth: "90%" }}
+                              {el.detail.transactionType !== "BURN_ALL" ? (
+                                <a
+                                  href={`https://explorer.bitcoin.com/bch/tx/${el.txid}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
                                 >
-                                  {el.txid}
-                                </Paragraph>
-                                <p>{`Confirmations: ${el.confirmations}`}</p>
-                              </a>
+                                  <p>
+                                    {el.balance > 0
+                                      ? el.detail.transactionType === "GENESIS"
+                                        ? "Genesis"
+                                        : el.detail.transactionType === "MINT"
+                                        ? "Mint"
+                                        : el.detail.transactionType === "BURN"
+                                        ? "Burn"
+                                        : "Received"
+                                      : el.detail.transactionType === "BURN_BATON"
+                                      ? "Burn Baton"
+                                      : "Sent"}
+                                  </p>
+                                  <p>{el.date.toLocaleString()}</p>
+
+                                  {el.detail.transactionType === "BURN" &&
+                                    (el.detail.burnAmount ? (
+                                      <p>{`${el.detail.burnAmount} ${el.detail.symbol} burned`}</p>
+                                    ) : (
+                                      <p>Burn amount could not be found for this transaction</p>
+                                    ))}
+
+                                  {el.detail.transactionType !== "BURN_BATON" && (
+                                    <p>{`${
+                                      el.balance > 0 && el.detail.transactionType !== "BURN"
+                                        ? "+"
+                                        : ""
+                                    }${el.balance} ${el.detail.symbol} ${
+                                      el.detail.transactionType === "BURN" ? "left" : ""
+                                    }`}</p>
+                                  )}
+
+                                  <Paragraph
+                                    small
+                                    ellipsis
+                                    style={{
+                                      whiteSpace: "nowrap",
+                                      color: "black",
+                                      maxWidth: "90%"
+                                    }}
+                                  >
+                                    {el.txid}
+                                  </Paragraph>
+                                  <p>{`Confirmations: ${el.confirmations}`}</p>
+                                </a>
+                              ) : (
+                                <p>Burn All</p>
+                              )}
                             </div>
                           ))}
                           <a
@@ -449,14 +508,24 @@ export default () => {
                             <Img
                               heigh={16}
                               width={16}
-                              src={`${SLP_TOKEN_ICONS_URL}/${token.tokenId}.png`}
+                              src={[
+                                `${BITCOIN_DOT_COM_ICONS_URL}/${token.tokenId}.png`,
+                                `${SLP_TOKEN_ICONS_URL}/${token.tokenId}.png`
+                              ]}
                               unloader={
                                 <img
                                   alt=""
                                   heigh={16}
                                   width={16}
-                                  style={{ borderRadius: "50%" }}
-                                  src={makeBlockie(token.tokenId)}
+                                  style={{
+                                    borderRadius: window.localStorage.getItem(token.tokenId)
+                                      ? null
+                                      : "50%"
+                                  }}
+                                  src={
+                                    window.localStorage.getItem(token.tokenId) ||
+                                    makeBlockie(token.tokenId)
+                                  }
                                 />
                               }
                             />
@@ -470,15 +539,25 @@ export default () => {
                   <Meta
                     avatar={
                       <Img
-                        src={`${SLP_TOKEN_ICONS_URL}/${token.tokenId}.png`}
+                        src={[
+                          `${BITCOIN_DOT_COM_ICONS_URL}/${token.tokenId}.png`,
+                          `${SLP_TOKEN_ICONS_URL}/${token.tokenId}.png`
+                        ]}
                         unloader={
                           <img
                             alt={`identicon of tokenId ${token.tokenId} `}
                             heigh="60"
                             width="60"
-                            style={{ borderRadius: "50%" }}
+                            style={{
+                              borderRadius: window.localStorage.getItem(token.tokenId)
+                                ? null
+                                : "50%"
+                            }}
                             key={`identicon-${token.tokenId}`}
-                            src={makeBlockie(token.tokenId)}
+                            src={
+                              window.localStorage.getItem(token.tokenId) ||
+                              makeBlockie(token.tokenId)
+                            }
                           />
                         }
                       />

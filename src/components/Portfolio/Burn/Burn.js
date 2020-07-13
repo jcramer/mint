@@ -155,6 +155,8 @@ const Burn = ({ token, avatar, onClose }) => {
 
       if (/Could not communicate with full node or other external service/.test(e.error)) {
         message = "Could not communicate with API. Please try again.";
+      } else if (/Transaction input BCH amount is too low/.test(e.message)) {
+        message = "Not enough BCH. Deposit some funds to use this feature.";
       } else {
         message = e.message || e.error || JSON.stringify(e);
       }
