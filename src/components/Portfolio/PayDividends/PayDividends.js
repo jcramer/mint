@@ -15,8 +15,8 @@ import {
   Tooltip,
   message,
   Alert,
-  Switch,
-  Select
+  Select,
+  Radio
 } from "antd";
 import { Row, Col } from "antd";
 import Paragraph from "antd/lib/typography/Paragraph";
@@ -84,9 +84,10 @@ export const StyledSwitchWrapper = styled.div`
   display: flex;
   justify-content: center;
   margin-top: 20px;
+  flex: 1 1 0;
 
-  * {
-    background-color: rgb(223, 223, 223) !important;
+  .ant-radio-button-wrapper-checked {
+    background: #fbfbfd !important;
   }
 `;
 
@@ -118,11 +119,11 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
   const { wallet, balances, slpBalancesAndUtxos, tokens } = React.useContext(WalletContext);
   const [formData, setFormData] = useState({
     dirty: false,
-    amount: "",
+    bchAmount: "",
     tokenId: initialToken ? initialToken.tokenId : null,
-    maxAmount: 0,
-    maxAmountChecked: false,
-    slpAmount: ""
+    bchMaxAmount: 0,
+    bchMaxAmountChecked: false,
+    sendingTokenAmount: ""
   });
   const [advancedOptions, setAdvancedOptions] = useState({
     ignoreOwnAddress: true,
@@ -136,16 +137,18 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
 
   const { stats } = useDividendsStats({
     token,
-    amount: formData.amount,
+    sendingToken,
+    bchAmount: formData.bchAmount,
+    sendingTokenAmount: formData.sendingTokenAmount,
     type,
     setLoading,
     advancedOptions,
     disabled: !/^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) || !token
   });
 
-  const validSlpDividend = sendingToken && formData.slpAmount >= 0;
+  const validSlpDividend = sendingToken && formData.sendingTokenAmount >= 0;
   const validBchDividend =
-    formData.amount > DUST && (!stats.maxAmount || formData.amount <= stats.maxAmount);
+    formData.bchAmount > DUST && (!stats.bchMaxAmount || formData.bchAmount <= stats.bchMaxAmount);
   const submitEnabled =
     /^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) &&
     ((type === Types.SLP && validSlpDividend) || (type === Types.BCH && validBchDividend)) &&
@@ -156,10 +159,10 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
 
   const tokensAvaibleForAirdrop = tokens ? tokens.filter(t => t.balance > 0) : [];
 
-  if (formData.maxAmountChecked && stats.maxAmount !== formData.amount) {
+  if (formData.bchMaxAmountChecked && stats.bchMaxAmount !== formData.bchAmount) {
     setFormData({
       ...formData,
-      amount: stats.maxAmount
+      bchAmount: stats.bchMaxAmount
     });
   }
 
@@ -174,7 +177,7 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
     }
 
     setLoading(true);
-    const { amount } = formData;
+    const { bchAmount } = formData;
     try {
       if (type === Types.BCH) {
         await createDividends(
@@ -183,7 +186,7 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
           slpBalancesAndUtxos.nonSlpUtxos,
           advancedOptions,
           {
-            value: amount,
+            value: bchAmount,
             token: token
           }
         );
@@ -194,7 +197,7 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
           [...slpBalancesAndUtxos.nonSlpUtxos, ...slpBalancesAndUtxos.slpUtxos],
           advancedOptions,
           {
-            quantity: formData.slpAmount,
+            quantity: formData.sendingTokenAmount,
             receiverToken: token,
             sendingToken
           }
@@ -247,7 +250,7 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
 
   const handleChange = e => {
     const { value, name } = e.target;
-    setFormData(data => ({ ...data, dirty: true, maxAmountChecked: false, [name]: value }));
+    setFormData(data => ({ ...data, dirty: true, bchMaxAmountChecked: false, [name]: value }));
   };
 
   const onTokenFound = tokenDetails => {
@@ -270,8 +273,8 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
     try {
       setFormData({
         ...formData,
-        maxAmountChecked: true,
-        amount: stats.maxAmount
+        bchMaxAmountChecked: true,
+        bchAmount: stats.bchMaxAmount
       });
     } catch (err) {
       message.error("Unable to calculate the max amount due to network errors");
@@ -289,7 +292,7 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
   };
 
   const onMaxSendingToken = () => {
-    setFormData({ ...formData, slpAmount: sendingToken.balance, dirty: true });
+    setFormData({ ...formData, sendingTokenAmount: sendingToken.balance, dirty: true });
   };
 
   return (
@@ -398,6 +401,21 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
                         </StyledStat>
                       </Tooltip>
                     </Col>
+                    &nbsp; &nbsp; &nbsp;
+                    <Col>
+                      <Tooltip title={`Estimated BCH fee to pay all the eligible addresses`}>
+                        <StyledStat>
+                          <Icon type="minus-circle" />
+                          &nbsp;
+                          <Badge
+                            count={stats.txFee || "0"}
+                            overflowCount={Number.MAX_VALUE}
+                            showZero
+                          />
+                          <Paragraph>Fee</Paragraph>
+                        </StyledStat>
+                      </Tooltip>
+                    </Col>
                   </Row>
                   <Row type="flex">
                     <Col span={24}>
@@ -411,10 +429,10 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
                               setFormData(data => ({
                                 ...data,
                                 dirty: false,
-                                maxAmountChecked: false,
+                                bchMaxAmountChecked: false,
                                 tokenId: null,
-                                maxAmount: 0,
-                                amount: ""
+                                bchMaxAmount: 0,
+                                bchAmount: ""
                               }));
                               setAdvancedOptions({
                                 ignoreOwnAddress: true,
@@ -445,8 +463,8 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
                               token &&
                               !loading
                                 ? `Must be greater than ${DUST} BCH ${
-                                    stats.maxAmount > 0
-                                      ? `and lower or equal to ${stats.maxAmount}`
+                                    stats.bchMaxAmount > 0
+                                      ? `and lower or equal to ${stats.bchMaxAmount}`
                                       : ""
                                   }`
                                 : ""
@@ -454,11 +472,11 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
                             onMax={onMaxAmount}
                             inputProps={{
                               suffix: "BCH",
-                              name: "amount",
+                              name: "bchAmount",
                               placeholder: "Amount",
                               onChange: e => handleChange(e),
                               required: true,
-                              value: formData.amount,
+                              value: formData.bchAmount,
                               disabled: !/^[A-Fa-f0-9]{64}$/g.test(formData.tokenId) || !token
                             }}
                           />
@@ -466,7 +484,7 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
                           <>
                             <StyledSelectWrapper>
                               <Select
-                                placeholder="Select the sending token"
+                                placeholder="Select the token to be sent"
                                 onChange={value =>
                                   setSendingToken(tokens.find(t => t.tokenId === value))
                                 }
@@ -500,26 +518,37 @@ const PayDividends = (SLP, { token: initialToken, onClose, bordered = false }) =
                                 onMax={onMaxSendingToken}
                                 inputProps={{
                                   prefix: "",
-                                  name: "slpAmount",
+                                  name: "sendingTokenAmount",
                                   placeholder: "Amount",
                                   onChange: e => handleChange(e),
                                   required: true,
-                                  value: formData.slpAmount
+                                  value: formData.sendingTokenAmount
                                 }}
                               />
                             )}
                           </>
                         )}
-                        <StyledSwitchWrapper>
-                          <Switch
-                            checkedChildren="Bitcoin Cash"
-                            unCheckedChildren="SLP Tokens"
-                            defaultChecked
-                            onChange={checked => {
-                              setType(checked ? Types.BCH : Types.SLP);
-                            }}
-                          />
-                        </StyledSwitchWrapper>
+                        <Row
+                          type="flex"
+                          style={{
+                            justifyContent: !token || token.isFromInput ? "center" : "inherit"
+                          }}
+                        >
+                          <Col>
+                            <StyledSwitchWrapper>
+                              <Radio.Group
+                                onChange={e => {
+                                  setType(e.target.value === Types.BCH ? Types.BCH : Types.SLP);
+                                  setSendingToken(null);
+                                }}
+                                defaultValue={Types.BCH}
+                              >
+                                <Radio.Button value={Types.BCH}>Pay using BCH</Radio.Button>
+                                <Radio.Button value={Types.SLP}>Pay using SLP tokens</Radio.Button>
+                              </Radio.Group>
+                            </StyledSwitchWrapper>
+                          </Col>
+                        </Row>
                       </Form>
                     </Col>
                     <Col span={24}>

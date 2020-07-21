@@ -65,7 +65,7 @@ const Icons = () => {
   const [tokenIconFileList, setTokenIconFileList] = React.useState();
   const [rawImageUrl, setRawImageUrl] = React.useState("");
   const [imageUrl, setImageUrl] = React.useState("");
-  const [showConfirm, setShowConfirm] = React.useState(false);
+  const [, setShowConfirm] = React.useState(false);
   const [showCropModal, setShowCropModal] = React.useState(false);
   const [roundSelection, setRoundSelection] = React.useState(true);
 
@@ -109,10 +109,6 @@ const Icons = () => {
   const onClose = React.useCallback(() => {
     setShowCropModal(false);
   }, []);
-
-  const history = useHistory();
-
-  const getFileSize = size => size / (1024 * 1024);
 
   const handleTokenIconImage = (imgFile, callback) =>
     new Promise((resolve, reject) => {
@@ -347,11 +343,6 @@ const Icons = () => {
     const { value, name } = e.target;
 
     setData(p => ({ ...p, [name]: value }));
-  };
-
-  const handleCheckbox = e => {
-    const { checked, name } = e.target;
-    setData(p => ({ ...p, [name]: checked }));
   };
 
   return (

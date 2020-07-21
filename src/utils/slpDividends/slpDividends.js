@@ -1,6 +1,6 @@
 export default class SlpDividends {
   static BATCH_SIZE = 18;
-  static FAN_OUT_BATCH_SIZE = 25 * SlpDividends.BATCH_SIZE;
+  static FAN_OUT_BATCH_SIZE = 50 * SlpDividends.BATCH_SIZE;
 
   static Status = {
     PREPARING: "PREPARING",

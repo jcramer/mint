@@ -8,8 +8,17 @@ import {
 } from "../../../utils/dividends/createDividends";
 import retry from "../../../utils/retry";
 import { WalletContext } from "../../../utils/context";
+import { getEligibleSlpDividendReceivers } from "../../../utils/slpDividends/createSlpDividends";
 
-export const useDividendsStats = ({ token, amount, setLoading, advancedOptions, disabled }) => {
+export const useDividendsStats = ({
+  token,
+  sendingToken,
+  sendingTokenAmount,
+  bchAmount,
+  setLoading,
+  advancedOptions,
+  disabled
+}) => {
   const { wallet, balances, slpBalancesAndUtxos } = React.useContext(WalletContext);
   const [stats, setStats] = React.useState({
     tokens: 0,
@@ -17,12 +26,12 @@ export const useDividendsStats = ({ token, amount, setLoading, advancedOptions, 
     balances: null,
     eligibles: 0,
     txFee: 0,
-    maxAmount: 0
+    bchMaxAmount: 0
   });
 
   React.useEffect(() => {
     if (disabled === true)
-      setStats({ tokens: 0, holders: 0, balances: null, eligibles: 0, txFee: 0, maxAmount: 0 });
+      setStats({ tokens: 0, holders: 0, balances: null, eligibles: 0, txFee: 0, bchMaxAmount: 0 });
   }, [disabled]);
 
   React.useEffect(() => {
@@ -62,13 +71,13 @@ export const useDividendsStats = ({ token, amount, setLoading, advancedOptions, 
           advancedOptions,
           token.tokenId
         );
-        const maxAmount = (balances.totalBalance - txFee).toFixed(8);
-        setStats(stats => ({ ...stats, maxAmount }));
+        const bchMaxAmount = (balances.totalBalance - txFee).toFixed(8);
+        setStats(stats => ({ ...stats, bchMaxAmount, txFee }));
       } catch (error) {}
     }
   }, [wallet, balances, stats.balances, slpBalancesAndUtxos, token, advancedOptions, disabled]);
 
-  // eligible addresses to the amount
+  // eligible addresses given a bch amount
   React.useEffect(() => {
     if (!disabled) {
       if (!token) {
@@ -76,11 +85,11 @@ export const useDividendsStats = ({ token, amount, setLoading, advancedOptions, 
       }
 
       try {
-        if (!Number.isNaN(Number(amount)) && amount > 0) {
+        if (!Number.isNaN(Number(bchAmount)) && bchAmount > 0) {
           const { addresses, txFee } = getEligibleAddresses(
             wallet,
             stats.balances,
-            amount,
+            bchAmount,
             slpBalancesAndUtxos.nonSlpUtxos,
             advancedOptions,
             token.tokenId
@@ -102,7 +111,51 @@ export const useDividendsStats = ({ token, amount, setLoading, advancedOptions, 
     slpBalancesAndUtxos,
     advancedOptions,
     token,
-    amount,
+    bchAmount,
+    disabled
+  ]);
+
+  // eligible addresses given a sending token amount
+  React.useEffect(() => {
+    if (!disabled) {
+      if (!token || !sendingToken) {
+        return;
+      }
+
+      try {
+        if (sendingTokenAmount > 0) {
+          const { receivers, estimatedTotalFee } = getEligibleSlpDividendReceivers(
+            wallet,
+            stats.balances,
+            sendingTokenAmount,
+            slpBalancesAndUtxos.nonSlpUtxos,
+            advancedOptions,
+            sendingToken,
+            token
+          );
+
+          setStats(stats => ({
+            ...stats,
+            eligibles: receivers.length,
+            txFee: Number(estimatedTotalFee.toFixed(8))
+          }));
+        } else {
+          setStats(stats => ({ ...stats, eligibles: 0, txFee: 0 }));
+        }
+      } catch (error) {
+        console.error(error);
+        message.error("Unable to calculate eligible addresses due to network errors");
+      }
+    }
+  }, [
+    wallet,
+    balances,
+    stats.balances,
+    slpBalancesAndUtxos,
+    advancedOptions,
+    token,
+    sendingToken,
+    sendingTokenAmount,
     disabled
   ]);
 
