@@ -11,10 +11,11 @@ const getSLPTxType = scriptASMArray => {
     throw new Error("Not a SLP OP_RETURN");
   }
 
+  // any token version listed here will display in the portfolio
   if (
-    scriptASMArray[2] !== "OP_1" &&
-    scriptASMArray[2] !== "OP_1NEGATE" &&
-    scriptASMArray[2] !== "41"
+    scriptASMArray[2] !== "OP_1" && // 0x01 = Fungible token
+    scriptASMArray[2] !== "OP_1NEGATE" && // 0x81 = NFT Group
+    scriptASMArray[2] !== "41" // 0x41 = NFT Token
   ) {
     // NOTE: bitcoincashlib-js converts hex 01 to OP_1 due to BIP62.3 enforcement
     throw new Error("Unknown token type");
@@ -24,22 +25,27 @@ const getSLPTxType = scriptASMArray => {
     .toString("ascii")
     .toLowerCase();
 
-  return type;
+  // this converts the ASM representation of the version field to a number
+  var version = scriptASMArray[2] === "OP_1" ? 0x01 : scriptASMArray[2] === "41" ? 0x41 : 0x81;
+
+  return { txType: type, version };
 };
 
 const decodeTxOut = withSLP((SLP, txOut) => {
   const out = {
     tokenId: "",
     balance: new BigNumber(0, 16),
-    hasBaton: false
+    hasBaton: false,
+    version: 0
   };
 
   const vout = parseInt(txOut.vout, 10);
 
   const script = SLP.Script.toASM(Buffer.from(txOut.tx.vout[0].scriptPubKey.hex, "hex")).split(" ");
   const type = getSLPTxType(script);
+  out.version = type.version;
 
-  if (type === "genesis") {
+  if (type.txType === "genesis") {
     if (typeof script[9] === "string" && script[9].startsWith("OP_")) {
       script[9] = parseInt(script[9].slice(3), 10).toString(16);
     }
@@ -53,7 +59,7 @@ const decodeTxOut = withSLP((SLP, txOut) => {
     }
     out.tokenId = txOut.txid;
     out.balance = new BigNumber(script[10], 16);
-  } else if (type === "mint") {
+  } else if (type.txType === "mint") {
     if (typeof script[5] === "string" && script[5].startsWith("OP_")) {
       script[5] = parseInt(script[5].slice(3), 10).toString(16);
     }
@@ -72,7 +78,7 @@ const decodeTxOut = withSLP((SLP, txOut) => {
       script[6] = parseInt(script[6].slice(3), 10).toString(16);
     }
     out.balance = new BigNumber(script[6], 16);
-  } else if (type === "send") {
+  } else if (type.txType === "send") {
     if (script.length <= vout + 4) {
       throw new Error("Not a SLP txout");
     }
@@ -97,7 +103,7 @@ const decodeTokenMetadata = withSLP((SLP, txDetails) => {
 
   const type = getSLPTxType(script);
 
-  if (type === "genesis") {
+  if (type.txType === "genesis") {
     return {
       tokenId: txDetails.txid,
       symbol: Buffer.from(script[4], "hex").toString("ascii"),
@@ -147,7 +153,10 @@ export default withSLP(async (SLP, addresses) => {
   });
 
   let tokens = Object.values(tokensByTxId);
-  const tokenIdsChunks = chunk(tokens.map(token => token.tokenId), 20);
+  const tokenIdsChunks = chunk(
+    tokens.map(token => token.tokenId),
+    20
+  );
   const tokenTxDetails = revertChunk(
     await Promise.all(tokenIdsChunks.map(tokenIdsChunk => SLP.Transaction.details(tokenIdsChunk)))
   );

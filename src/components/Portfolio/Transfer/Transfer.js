@@ -36,6 +36,7 @@ const Transfer = ({ token, onClose }) => {
     try {
       const link = await sendToken(wallet, {
         tokenId: token.tokenId,
+        version: token.version,
         amount: quantity,
         tokenReceiverAddress: address
       });
@@ -65,6 +66,10 @@ const Transfer = ({ token, onClose }) => {
         message = "Token Receiver Address must be simpleledger format.";
       } else if (/Invalid BCH address. Double check your address is valid/.test(e.message)) {
         message = "Invalid SLP address. Double check your address is valid.";
+      } else if (/NFT token types are not yet supported/.test(e.message)) {
+        message = e.message;
+      } else if (/is not supported/.test(e.message)) {
+        message = e.message;
       } else if (!e.error) {
         message = `Transaction failed: no response from ${getRestUrl()}.`;
       } else if (/Could not communicate with full node or other external service/.test(e.error)) {

@@ -2,6 +2,17 @@ import withSLP from "./withSLP";
 
 const broadcastTransaction = async (SLPInstance, wallet, { ...args }) => {
   try {
+    // check supported token versions
+    if (args.version) {
+      switch (args.version) {
+        case 0x41:
+        case 0x81:
+          throw new Error("NFT token types are not yet supported.");
+        default:
+          throw new Error(`Token type ${args.version} is not supported.`);
+      }
+    }
+
     const NETWORK = process.env.REACT_APP_NETWORK;
 
     const TRANSACTION_TYPE =

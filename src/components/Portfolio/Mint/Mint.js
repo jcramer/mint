@@ -50,6 +50,7 @@ const Mint = ({ token, onClose }) => {
     try {
       const link = await mintToken(wallet, {
         tokenId: token.tokenId,
+        version: token.version,
         additionalTokenQty: quantity,
         batonReceiverAddress: baton
       });
@@ -75,6 +76,10 @@ const Mint = ({ token, onClose }) => {
         message = "Invalid BCH address";
       } else if (/Transaction input BCH amount is too low/.test(e.message)) {
         message = "Not enough BCH. Deposit some funds to use this feature.";
+      } else if (/NFT token types are not yet supported/.test(e.message)) {
+        message = e.message;
+      } else if (/is not supported/.test(e.message)) {
+        message = e.message;
       } else if (!e.error) {
         message = `Transaction failed: no response from ${getRestUrl()}.`;
       } else if (/Could not communicate with full node or other external service/.test(e.error)) {

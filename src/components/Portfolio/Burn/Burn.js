@@ -85,6 +85,7 @@ const Burn = ({ token, avatar, onClose }) => {
       if (hasBalance && formData.burnBaton === false) {
         link = await broadcastTransaction(wallet, {
           tokenId: token.tokenId,
+          version: token.version,
           amount: Number.parseFloat(formData.amount)
         });
 
@@ -100,6 +101,7 @@ const Burn = ({ token, avatar, onClose }) => {
       } else if (!hasBalance && hasBaton && formData.burnBaton === true) {
         link = await broadcastTransaction(wallet, {
           tokenId: token.tokenId,
+          version: token.version,
           additionalTokenQty: 0,
           batonReceiverAddress: null,
           burnBaton: true
@@ -117,6 +119,7 @@ const Burn = ({ token, avatar, onClose }) => {
       } else if (hasBalance && hasBaton && formData.burnBaton === true) {
         link = await broadcastTransaction(wallet, {
           tokenId: token.tokenId,
+          version: token.version,
           additionalTokenQty: 0,
           batonReceiverAddress: null,
           burnBaton: true
@@ -134,6 +137,7 @@ const Burn = ({ token, avatar, onClose }) => {
 
         link = await broadcastTransaction(wallet, {
           tokenId: token.tokenId,
+          version: token.version,
           amount: Number.parseFloat(formData.amount)
         });
 
@@ -157,6 +161,10 @@ const Burn = ({ token, avatar, onClose }) => {
         message = "Could not communicate with API. Please try again.";
       } else if (/Transaction input BCH amount is too low/.test(e.message)) {
         message = "Not enough BCH. Deposit some funds to use this feature.";
+      } else if (/NFT token types are not yet supported/.test(e.message)) {
+        message = e.message;
+      } else if (/is not supported/.test(e.message)) {
+        message = e.message;
       } else {
         message = e.message || e.error || JSON.stringify(e);
       }
